@@ -1,0 +1,57 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
+import { api, type Dashboard } from '@/lib/api';
+import { PageShell } from '@/components/shell';
+import { WLoading } from '@/components/ui';
+
+export default function PanelLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { usuario, pronto } = useAuth();
+  const router = useRouter();
+  const [alerts, setAlerts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (pronto && !usuario) router.replace('/login');
+  }, [pronto, usuario, router]);
+
+  useEffect(() => {
+    if (!usuario) return;
+    api
+      .dashboard()
+      .then((d: Dashboard) => {
+        const pontos = d.alertas.filter((a) => a.tipo !== 'contagem').length;
+        const contagens = d.alertas.filter(
+          (a) => a.tipo === 'contagem',
+        ).length;
+        setAlerts({
+          dashboard: d.alertas.length || undefined,
+          pontos: pontos || undefined,
+          contagens: contagens || undefined,
+        } as Record<string, number>);
+      })
+      .catch(() => setAlerts({}));
+  }, [usuario]);
+
+  if (!pronto || !usuario) {
+    return (
+      <div
+        style={{
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <WLoading texto="abrindo o painel…" />
+      </div>
+    );
+  }
+
+  return <PageShell alerts={alerts}>{children}</PageShell>;
+}
