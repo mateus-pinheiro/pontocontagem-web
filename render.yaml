@@ -1,0 +1,17 @@
+# Blueprint do Render — painel web Vamos Ponto (Next.js static export).
+# O Render lê este arquivo automaticamente ao criar/atualizar o serviço.
+services:
+  - type: web
+    name: vamosponto-web
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./out
+    # next/_next/* tem hash no nome → cache longo e imutável.
+    headers:
+      - path: /_next/static/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    envVars:
+      # Definida no painel do Render (não versionada). Ex.: https://sua-api.vercel.app/api
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
