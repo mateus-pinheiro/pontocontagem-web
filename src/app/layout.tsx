@@ -4,9 +4,19 @@ import { AuthProvider } from '@/lib/auth';
 import { W_KEYFRAMES } from '@/lib/theme';
 
 export const metadata: Metadata = {
-  title: 'Vamos Ponto — Painel do Gerente',
+  title: 'Ponto Contagem — Painel do Gerente',
   description:
     'Ponto e estoque do seu restaurante, sem firula. Painel do gerente.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: '/icon-ios-180.png',
+  },
+  manifest: '/site.webmanifest',
 };
 
 export default function RootLayout({

@@ -60,7 +60,7 @@ export default function FuncionariosScreen() {
       <WPageHeader
         breadcrumb="cadastros"
         title="funcionários"
-        subtitle={`${ativos} ativos no Tasca da Esquina`}
+        subtitle={`${ativos} ativos no Pitéu`}
         actions={
           <WButton
             kind="primary"

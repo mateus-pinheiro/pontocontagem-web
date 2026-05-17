@@ -46,7 +46,7 @@ export default function GerentesScreen() {
         title="gerentes"
         subtitle={`${ativos} ${
           ativos === 1 ? 'gerente ativo' : 'gerentes ativos'
-        } no Tasca da Esquina`}
+        } no Pitéu`}
         actions={
           <WButton
             kind="primary"

@@ -1,8 +1,8 @@
 {
-  "name": "vamosponto-web",
+  "name": "pontocontagem-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Painel web do gerente — sistema de ponto e estoque (Vamos Ponto)",
+  "description": "Painel web do gerente — sistema de ponto e estoque (Ponto Contagem)",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",

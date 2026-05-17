@@ -37,7 +37,7 @@ export default function DashboardScreen() {
       <WPageHeader
         breadcrumb={`painel · ${fmtDataLonga()}`}
         title={`olá, ${nome}`}
-        subtitle="aqui é o resumo do que está rolando agora no Tasca da Esquina."
+        subtitle="aqui é o resumo do que está rolando agora no Pitéu."
         actions={
           <>
             <WButton

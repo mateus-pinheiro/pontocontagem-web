@@ -14,6 +14,7 @@ import { WT } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { fmtDataLonga } from '@/lib/format';
 import { WAvatar, WIcon, WInput } from './ui';
+import { BrandMark } from './BrandMark';
 
 export interface NavItem {
   id: string;
@@ -130,23 +131,23 @@ function Sidebar({
             fontWeight: 700, fontSize: 15, letterSpacing: -0.5,
           }}
         >
-          VP
+          <BrandMark size={20} stemColor="#f7f5f0" />
         </div>
         <div>
           <div
             style={{
-              fontSize: 14, fontWeight: 700, color: WT.ink,
-              letterSpacing: -0.2, lineHeight: 1.1,
+              fontSize: 14, fontWeight: 600, color: WT.ink,
+              letterSpacing: -0.35, lineHeight: 1.1,
             }}
           >
-            Vamos Ponto
+            ponto contagem
           </div>
           <div
             style={{
               fontSize: 11, color: WT.ink3, fontWeight: 500, marginTop: 1,
             }}
           >
-            Tasca da Esquina
+            Pitéu
           </div>
         </div>
       </div>

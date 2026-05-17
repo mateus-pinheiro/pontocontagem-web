@@ -6,6 +6,7 @@ import { WT } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { ApiError } from '@/lib/api';
 import { WButton, WIcon, WInput } from '@/components/ui';
+import { BrandMark } from '@/components/BrandMark';
 
 export default function LoginScreen() {
   const T = WT;
@@ -71,22 +72,12 @@ export default function LoginScreen() {
             alignItems: 'center', gap: 12,
           }}
         >
-          <div
-            style={{
-              width: 44, height: 44, borderRadius: 12,
-              background: '#fff', color: T.ink,
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontWeight: 700, fontSize: 18,
-              letterSpacing: -0.5,
-            }}
-          >
-            VP
-          </div>
+          <BrandMark size={40} stemColor="#f7f5f0" />
           <div>
             <div
-              style={{ fontSize: 17, fontWeight: 700, letterSpacing: -0.3 }}
+              style={{ fontSize: 19, fontWeight: 600, letterSpacing: -0.475 }}
             >
-              Vamos Ponto
+              ponto contagem
             </div>
             <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>
               painel do gerente
@@ -122,7 +113,7 @@ export default function LoginScreen() {
         >
           <span>v1.2 · 2026</span>
           <span>·</span>
-          <span>Tasca da Esquina</span>
+          <span>Pitéu</span>
         </div>
       </div>
 
