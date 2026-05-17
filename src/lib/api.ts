@@ -219,6 +219,35 @@ export function setAuth(token: string, usuario: Usuario) {
 export function clearAuth() {
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
+  clearApiCache();
+}
+
+// ── Cache de leitura (SWR) + dedup de requisições ────────────────────────
+// Objetivo: (1) duas chamadas GET idênticas disparadas quase juntas
+// (ex.: dashboard no layout + na tela) compartilham UMA ida à rede;
+// (2) navegar entre telas mostra o dado cacheado na hora enquanto
+// revalida em background, em vez de spinner cheio a cada navegação.
+const CACHE_TTL = 30_000; // ms — janela de "fresco"
+interface CacheEntry {
+  t: number;
+  v: unknown;
+}
+const gcache = new Map<string, CacheEntry>();
+const inflight = new Map<string, Promise<unknown>>();
+
+/** Snapshot síncrono do cache (usado pelo useApi p/ pintar na hora). */
+export function peekCache<T>(
+  key: string,
+): { data: T; stale: boolean } | null {
+  const e = gcache.get(key);
+  if (!e) return null;
+  return { data: e.v as T, stale: Date.now() - e.t > CACHE_TTL };
+}
+
+/** Zera tudo — chamado no logout e quando a sessão cai (401/403). */
+export function clearApiCache() {
+  gcache.clear();
+  inflight.clear();
 }
 
 // ── Erro de API ──────────────────────────────────────────────────────────
@@ -232,7 +261,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
+async function doRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
@@ -270,6 +299,36 @@ async function request<T>(
   return corpo as T;
 }
 
+// GET → dedup de chamadas concorrentes + write-through no cache.
+// Mutação (POST/PATCH/...) → invalida o cache de leitura.
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+
+  if (method !== 'GET') {
+    const data = await doRequest<T>(path, options);
+    gcache.clear();
+    return data;
+  }
+
+  const existing = inflight.get(path);
+  if (existing) return existing as Promise<T>;
+
+  const p = (async () => {
+    try {
+      const data = await doRequest<T>(path, options);
+      gcache.set(path, { t: Date.now(), v: data });
+      return data;
+    } finally {
+      inflight.delete(path);
+    }
+  })();
+  inflight.set(path, p);
+  return p as Promise<T>;
+}
+
 function qs(params: Record<string, string | number | undefined>) {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -295,6 +354,11 @@ export const api = {
 
   // dashboard / relatórios
   dashboard: () => request<Dashboard>('/dashboard'),
+  // Enxuto p/ os badges da sidebar (evita o payload pesado de /dashboard).
+  alertasResumo: () =>
+    request<{ ponto: number; contagem: number; sync: number }>(
+      '/dashboard/alertas-resumo',
+    ),
   relatorios: (periodo: string) =>
     request<Relatorio>(`/relatorios${qs({ periodo })}`),
 

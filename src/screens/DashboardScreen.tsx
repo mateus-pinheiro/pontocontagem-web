@@ -23,6 +23,7 @@ export default function DashboardScreen() {
   const { data, loading, erro, reload } = useApi<Dashboard>(
     () => api.dashboard(),
     [],
+    '/dashboard',
   );
 
   const nome =

@@ -22,6 +22,7 @@ export default function ListasScreen() {
   const { data: listas, loading, erro, reload } = useApi(
     () => api.listas(),
     [],
+    '/listas-contagem',
   );
   const { data: itensData } = useApi(() => api.itens(), []);
   const { data: funcsData, reload: reloadFuncs } = useApi(

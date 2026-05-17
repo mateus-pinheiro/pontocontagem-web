@@ -6,11 +6,30 @@ services:
     runtime: static
     buildCommand: npm ci && npm run build
     staticPublishPath: ./out
-    # next/_next/* tem hash no nome → cache longo e imutável.
+    # ATENÇÃO: alterações em `headers` só passam a valer após um novo
+    # deploy/sync do Blueprint no Render (idealmente "Clear build cache
+    # & deploy"). Sem o redeploy o Render continua servindo o default
+    # `max-age=0, s-maxage=300`, que força o navegador a revalidar todo
+    # chunk a cada load — exatamente o que estamos corrigindo aqui.
     headers:
+      # _next/static/* tem hash no nome → imutável, cache eterno no
+      # browser e na CDN (mata a revalidação a cada navegação).
       - path: /_next/static/*
         name: Cache-Control
         value: public, max-age=31536000, immutable
+      # Os outros assets estáticos (ícones, manifest) podem ter cache
+      # médio na CDN.
+      - path: /favicon.*
+        name: Cache-Control
+        value: public, max-age=86400
+      - path: /icon-*
+        name: Cache-Control
+        value: public, max-age=86400
+      # HTML nunca imutável: o shell precisa sempre refletir o último
+      # deploy. Cache curto na CDN, revalidação no browser.
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, s-maxage=60, must-revalidate
     envVars:
       # Definida no painel do Render (não versionada). Ex.: https://sua-api.vercel.app/api
       - key: NEXT_PUBLIC_API_URL

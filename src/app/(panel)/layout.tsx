@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import { api, type Dashboard } from '@/lib/api';
+import { api } from '@/lib/api';
 import { PageShell } from '@/components/shell';
 import { WLoading } from '@/components/ui';
 
@@ -23,16 +23,14 @@ export default function PanelLayout({
   useEffect(() => {
     if (!usuario) return;
     api
-      .dashboard()
-      .then((d: Dashboard) => {
-        const pontos = d.alertas.filter((a) => a.tipo !== 'contagem').length;
-        const contagens = d.alertas.filter(
-          (a) => a.tipo === 'contagem',
-        ).length;
+      .alertasResumo()
+      .then(({ ponto, contagem, sync }) => {
+        // mesma derivação de antes: badge "pontos" = ponto + sync
+        // (tudo que não é contagem); "dashboard" = total.
         setAlerts({
-          dashboard: d.alertas.length || undefined,
-          pontos: pontos || undefined,
-          contagens: contagens || undefined,
+          dashboard: ponto + contagem + sync || undefined,
+          pontos: ponto + sync || undefined,
+          contagens: contagem || undefined,
         } as Record<string, number>);
       })
       .catch(() => setAlerts({}));

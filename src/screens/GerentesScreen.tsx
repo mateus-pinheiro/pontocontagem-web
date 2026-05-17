@@ -30,6 +30,7 @@ export default function GerentesScreen() {
   const { data, loading, erro, reload } = useApi(
     () => api.gerentes(),
     [],
+    '/gerentes',
   );
 
   const gerentes = data ?? [];
