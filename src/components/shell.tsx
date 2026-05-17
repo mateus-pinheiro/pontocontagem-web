@@ -322,11 +322,19 @@ export function PageShell({
   const router = useRouter();
   const pathname = usePathname();
   const [search, setSearch] = useState('');
+  const [pendente, setPendente] = useState<string | null>(null);
 
-  const current =
+  const rotaAtual =
     [...NAV_ITEMS, ...NAV_SECONDARY].find((n) =>
       n.href === '/' ? pathname === '/' : pathname.startsWith(n.href),
     )?.id || 'dashboard';
+
+  // Otimista: o item clicado já fica ativo no clique; quando a rota
+  // realmente troca, descarta o pendente e volta a seguir a URL.
+  const current = pendente ?? rotaAtual;
+  useEffect(() => {
+    if (pendente && rotaAtual === pendente) setPendente(null);
+  }, [rotaAtual, pendente]);
 
   return (
     <SearchCtx.Provider value={{ search, setSearch }}>
@@ -341,6 +349,7 @@ export function PageShell({
           alerts={alerts}
           onNavigate={(item) => {
             setSearch('');
+            if (item.id !== rotaAtual) setPendente(item.id);
             router.push(item.href);
           }}
         />
