@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { WT } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
@@ -266,6 +267,26 @@ export default function LoginScreen() {
                   não consegue entrar? peça pra outro ADMIN do estabelecimento
                   resetar sua senha pelo painel.
                 </DicaBox>
+                <div
+                  style={{
+                    marginTop: 4,
+                    display: 'flex',
+                    gap: 6,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 13,
+                    color: T.ink2,
+                    fontWeight: 500,
+                  }}
+                >
+                  <span>ainda não tem conta?</span>
+                  <Link
+                    href="/registrar"
+                    style={{ color: T.ink, fontWeight: 600 }}
+                  >
+                    criar uma agora
+                  </Link>
+                </div>
               </div>
             </form>
           )}

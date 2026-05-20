@@ -420,6 +420,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ senhaAtual, novaSenha }),
     }),
+  registrar: (body: {
+    nomeEstabelecimento: string;
+    nomeUsuario: string;
+    email: string;
+    senha: string;
+  }) =>
+    request<TokenCompleto>('/auth/registrar', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 
   // dashboard / relatórios
   dashboard: () => request<Dashboard>('/dashboard'),

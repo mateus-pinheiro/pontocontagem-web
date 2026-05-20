@@ -30,6 +30,12 @@ interface AuthCtx {
   pronto: boolean; // já leu o localStorage
   entrar: (email: string, senha: string) => Promise<EntrarResp>;
   selecionarEstabelecimento: (id: string) => Promise<Usuario>;
+  cadastrar: (body: {
+    nomeEstabelecimento: string;
+    nomeUsuario: string;
+    email: string;
+    senha: string;
+  }) => Promise<Usuario>;
   sair: () => void;
   /** true se o usuário tem TODAS as permissões listadas. */
   pode: (...p: Permissao[]) => boolean;
@@ -70,6 +76,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return resp.usuario;
   }, []);
 
+  const cadastrar = useCallback(
+    async (body: {
+      nomeEstabelecimento: string;
+      nomeUsuario: string;
+      email: string;
+      senha: string;
+    }) => {
+      const resp = await api.registrar(body);
+      setAuth(resp.token, resp.usuario);
+      setUsuario(resp.usuario);
+      return resp.usuario;
+    },
+    [],
+  );
+
   const sair = useCallback(() => {
     clearAuth();
     setUsuario(null);
@@ -88,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         pronto,
         entrar,
         selecionarEstabelecimento,
+        cadastrar,
         sair,
         pode,
       }}
