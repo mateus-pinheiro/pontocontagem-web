@@ -150,7 +150,7 @@ function Sidebar({
               fontSize: 11, color: WT.ink3, fontWeight: 500, marginTop: 1,
             }}
           >
-            Pitéu
+            {usuario?.estabelecimentoNome || '—'}
           </div>
         </div>
       </div>

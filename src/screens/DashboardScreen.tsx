@@ -26,19 +26,19 @@ export default function DashboardScreen() {
     '/dashboard',
   );
 
-  const nome =
+  const usuarioLocal =
     typeof window !== 'undefined'
-      ? JSON.parse(localStorage.getItem('vp_usuario') || '{}')?.nome?.split(
-          ' ',
-        )[0] || 'gerente'
-      : 'gerente';
+      ? JSON.parse(localStorage.getItem('vp_usuario') || '{}')
+      : {};
+  const nome = usuarioLocal?.nome?.split(' ')[0] || 'gerente';
+  const estabelecimento = usuarioLocal?.estabelecimentoNome || 'seu estabelecimento';
 
   return (
     <>
       <WPageHeader
         breadcrumb={`painel · ${fmtDataLonga()}`}
         title={`olá, ${nome}`}
-        subtitle="aqui é o resumo do que está rolando agora no Pitéu."
+        subtitle={`aqui é o resumo do que está rolando agora no ${estabelecimento}.`}
         actions={
           <>
             <WButton

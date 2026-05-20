@@ -223,7 +223,7 @@ export default function RegistrarScreen() {
                 label="nome do estabelecimento"
                 value={nomeEstabelecimento}
                 onChange={setNomeEstabelecimento}
-                placeholder="ex.: restaurante pitéu"
+                placeholder="ex.: cantina do bairro"
                 size="lg"
               />
               <WInput
