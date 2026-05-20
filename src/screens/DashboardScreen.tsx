@@ -410,7 +410,7 @@ export default function DashboardScreen() {
                             >
                               atribuída para{' '}
                               {c.atribuidos
-                                .map((a) => a.nome.split(' ')[0])
+                                .map((a) => a.nome?.split(' ')[0] ?? '—')
                                 .join(', ') || '—'}
                             </div>
                           </div>

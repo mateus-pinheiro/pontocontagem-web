@@ -207,7 +207,9 @@ export interface Dashboard {
     status: StatusContagem;
     contados: number;
     total: number;
-    atribuidos: { id: string; nome: string }[];
+    /** A API atual só envia o id de cada atribuído no /api/dashboard
+     *  (ver dashboard.service); um fix paralelo na API adiciona `nome`. */
+    atribuidos: { id: string; nome?: string }[];
   }[];
   alertas: {
     id: string;
