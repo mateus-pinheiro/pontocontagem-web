@@ -11,7 +11,6 @@ const USER_KEY = 'vp_usuario';
 const SESSION_KEY = 'vp_session_token';
 
 // ── Enums e tipos da API ─────────────────────────────────────────────────
-export type CategoriaItem = 'COZINHA' | 'BAR' | 'LIMPEZA';
 export type StatusContagem = 'ABERTA' | 'FINALIZADA';
 export type TipoPonto = 'ENTRADA' | 'INICIO_PAUSA' | 'FIM_PAUSA' | 'SAIDA';
 export type StatusFuncionario =
@@ -97,10 +96,31 @@ export interface UltimoEstoque {
   contadoPor: { id: string; nome: string };
 }
 
+/** Cores aceitas pelo back; combinam com os `tone`s do <WTag>. */
+export type CorCategoria = 'neutral' | 'terra' | 'green' | 'blue' | 'amber';
+
+export interface Categoria {
+  id: string;
+  estabelecimentoId: string;
+  nome: string;
+  cor: CorCategoria;
+  sistema: boolean;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/** Snippet de categoria embarcado em item/contagem/relatório. */
+export interface CategoriaResumo {
+  id: string;
+  nome: string;
+  cor: CorCategoria;
+}
+
 export interface Item {
   id: string;
   nome: string;
-  categoria: CategoriaItem;
+  categoria: CategoriaResumo;
   unidade: string;
   ativo: boolean;
   criadoEm: string;
@@ -119,7 +139,7 @@ export interface Lista {
   totalItens: number;
   itens: {
     ordem: number;
-    item: { id: string; nome: string; categoria: CategoriaItem; unidade: string };
+    item: { id: string; nome: string; categoria: CategoriaResumo; unidade: string };
   }[];
   criadoEm: string;
 }
@@ -143,7 +163,7 @@ export interface ContagemDetalhe {
   atribuidos: { id: string; nome: string }[];
   itens: {
     ordem: number;
-    item: { id: string; nome: string; categoria: CategoriaItem; unidade: string };
+    item: { id: string; nome: string; categoria: CategoriaResumo; unidade: string };
     quantidade: number | null;
     contadoPor: { id: string; nome: string } | null;
     registradoEm: string | null;
@@ -240,7 +260,7 @@ export interface Relatorio {
   estoqueAtual: {
     id: string;
     nome: string;
-    categoria: CategoriaItem;
+    categoria: CategoriaResumo;
     unidade: string;
     ultimoEstoque: number | null;
   }[];
@@ -440,17 +460,33 @@ export const api = {
   relatorios: (periodo: string) =>
     request<Relatorio>(`/relatorios${qs({ periodo })}`),
 
+  // categorias (catálogo por estabelecimento)
+  categorias: () => request<Categoria[]>('/categorias'),
+  criarCategoria: (body: { nome: string; cor?: CorCategoria }) =>
+    request<Categoria>('/categorias', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  atualizarCategoria: (
+    id: string,
+    body: { nome?: string; cor?: CorCategoria; ativo?: boolean },
+  ) =>
+    request<Categoria>(`/categorias/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
   // itens
-  itens: (categoria?: CategoriaItem, busca?: string) =>
-    request<Paginado<Item>>(`/itens${qs({ categoria, busca, limit: 100 })}`),
+  itens: (categoriaId?: string, busca?: string) =>
+    request<Paginado<Item>>(`/itens${qs({ categoriaId, busca, limit: 100 })}`),
   item: (id: string) => request<ItemDetalhe>(`/itens/${id}`),
-  criarItem: (body: { nome: string; categoria: CategoriaItem; unidade: string }) =>
+  criarItem: (body: { nome: string; categoriaId: string; unidade: string }) =>
     request<Item>('/itens', { method: 'POST', body: JSON.stringify(body) }),
   atualizarItem: (
     id: string,
     body: {
       nome?: string;
-      categoria?: CategoriaItem;
+      categoriaId?: string;
       unidade?: string;
       ativo?: boolean;
     },

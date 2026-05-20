@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { WT } from '@/lib/theme';
 import { api } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
-import { CATEGORIA_LABEL, CATEGORIA_TONE, fmtNum, fmtQtd } from '@/lib/format';
+import { fmtNum, fmtQtd } from '@/lib/format';
 import {
   WAvatar,
   WButton,
@@ -358,10 +358,10 @@ export default function RelatoriosScreen() {
                     }}
                   >
                     <WTag
-                      tone={CATEGORIA_TONE[i.categoria] as never}
+                      tone={(i.categoria.cor ?? 'neutral') as never}
                       size="xs"
                     >
-                      {CATEGORIA_LABEL[i.categoria]}
+                      {i.categoria.nome}
                     </WTag>
                   </div>
                   <div

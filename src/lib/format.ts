@@ -1,19 +1,7 @@
 // Mapeamentos enum da API -> rótulos do design (pt-BR, minúsculas) e
 // formatadores de data/número usados no painel.
 
-import type { CategoriaItem, TipoPonto } from './api';
-
-export const CATEGORIA_LABEL: Record<CategoriaItem, string> = {
-  BAR: 'bar',
-  COZINHA: 'cozinha',
-  LIMPEZA: 'limpeza',
-};
-
-export const CATEGORIA_TONE: Record<CategoriaItem, string> = {
-  BAR: 'terra',
-  COZINHA: 'green',
-  LIMPEZA: 'blue',
-};
+import type { TipoPonto } from './api';
 
 export const TIPO_PONTO_LABEL: Record<TipoPonto, string> = {
   ENTRADA: 'entrada',

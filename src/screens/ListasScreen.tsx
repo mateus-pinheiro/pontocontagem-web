@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { WT } from '@/lib/theme';
 import { api, type Item, type Lista } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
-import { CATEGORIA_TONE } from '@/lib/format';
 import {
   WButton,
   WCard,
@@ -99,9 +98,7 @@ export default function ListasScreen() {
             <div style={{ padding: 6 }}>
               {todasListas.map((l) => {
                 const ativo = l.id === activeId;
-                const tone =
-                  l.itens[0] &&
-                  CATEGORIA_TONE[l.itens[0].item.categoria];
+                const tone = l.itens[0]?.item.categoria?.cor;
                 return (
                   <button
                     key={l.id}
