@@ -71,6 +71,8 @@ export default function PontosScreen() {
     [de, ate, funcFilter],
   );
   const { data: funcsData } = useApi(() => api.membros(), []);
+  const { data: alertas } = useApi(() => api.alertasResumo(), []);
+  const totalAlertas = (alertas?.ponto ?? 0) + (alertas?.sync ?? 0);
   const funcionarios = funcsData?.filter((m) => m.ativo) ?? [];
   const nomePor = useMemo(
     () => new Map(funcionarios.map((m) => [m.id, m.nome])),
@@ -126,9 +128,30 @@ export default function PontosScreen() {
           />
         </div>
         <div style={{ flex: 1 }} />
-        <WButton kind="ghost" size="sm" icon="filter">
-          mais filtros
-        </WButton>
+        {totalAlertas > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 12,
+              color: T.ink3,
+              fontWeight: 500,
+            }}
+          >
+            <WTag tone="amber" size="sm" dot>
+              {totalAlertas}{' '}
+              {totalAlertas === 1 ? 'alerta' : 'alertas'}
+            </WTag>
+            <span>
+              {alertas?.sync ? `${alertas.sync} pendente sync` : ''}
+              {alertas?.sync && alertas?.ponto ? ' · ' : ''}
+              {alertas?.ponto
+                ? `${alertas.ponto} precisa correção`
+                : ''}
+            </span>
+          </div>
+        )}
       </WToolbar>
 
       {loading && <WLoading />}

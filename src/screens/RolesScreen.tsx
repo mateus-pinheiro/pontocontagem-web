@@ -166,8 +166,8 @@ export default function RolesScreen() {
                         color: T.ink3,
                       }}
                     >
-                      {r.permissoes.length} permissão
-                      {r.permissoes.length === 1 ? '' : 'es'} —{' '}
+                      {r.permissoes.length}{' '}
+                      {r.permissoes.length === 1 ? 'permissão' : 'permissões'} —{' '}
                       {r.permissoes
                         .slice(0, 3)
                         .map((p) => PERMISSAO_LABEL[p])

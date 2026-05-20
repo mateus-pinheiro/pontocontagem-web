@@ -85,10 +85,6 @@ export default function ItensScreen() {
             })),
           ]}
         />
-        <div style={{ flex: 1 }} />
-        <WButton kind="ghost" size="sm" icon="filter">
-          filtros
-        </WButton>
       </WToolbar>
 
       {loading && <WLoading />}
