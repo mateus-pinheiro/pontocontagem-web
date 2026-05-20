@@ -1,6 +1,6 @@
-// Cliente tipado da API NestJS (painel do gerente).
-// Token JWT guardado no localStorage; toda chamada autenticada manda
-// Authorization: Bearer <token>.
+// Cliente tipado da API NestJS (painel multi-tenant).
+// Token JWT no localStorage; toda chamada autenticada manda
+// Authorization: Bearer <token>. RBAC fino servidor-side.
 
 const BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ||
@@ -8,8 +8,9 @@ const BASE =
 
 const TOKEN_KEY = 'vp_token';
 const USER_KEY = 'vp_usuario';
+const SESSION_KEY = 'vp_session_token';
 
-// ── Tipos da API ─────────────────────────────────────────────────────────
+// ── Enums e tipos da API ─────────────────────────────────────────────────
 export type CategoriaItem = 'COZINHA' | 'BAR' | 'LIMPEZA';
 export type StatusContagem = 'ABERTA' | 'FINALIZADA';
 export type TipoPonto = 'ENTRADA' | 'INICIO_PAUSA' | 'FIM_PAUSA' | 'SAIDA';
@@ -19,35 +20,77 @@ export type StatusFuncionario =
   | 'fora'
   | 'inativo';
 
+/** Catálogo fixo de permissões (mesmo enum Permissao do schema). */
+export type Permissao =
+  | 'USUARIO_GERENCIAR'
+  | 'ROLE_GERENCIAR'
+  | 'ESTABELECIMENTO_CRIAR'
+  | 'ESTABELECIMENTO_EDITAR'
+  | 'ITEM_GERENCIAR'
+  | 'LISTA_GERENCIAR'
+  | 'CONTAGEM_CRIAR'
+  | 'CONTAGEM_FINALIZAR'
+  | 'CONTAGEM_ATRIBUIR'
+  | 'CONTAGEM_CONTAR'
+  | 'PONTO_BATER'
+  | 'PONTO_CORRIGIR'
+  | 'RELATORIO_VER'
+  | 'DASHBOARD_VER';
+
+export const TODAS_PERMISSOES: Permissao[] = [
+  'USUARIO_GERENCIAR',
+  'ROLE_GERENCIAR',
+  'ESTABELECIMENTO_CRIAR',
+  'ESTABELECIMENTO_EDITAR',
+  'ITEM_GERENCIAR',
+  'LISTA_GERENCIAR',
+  'CONTAGEM_CRIAR',
+  'CONTAGEM_FINALIZAR',
+  'CONTAGEM_ATRIBUIR',
+  'CONTAGEM_CONTAR',
+  'PONTO_BATER',
+  'PONTO_CORRIGIR',
+  'RELATORIO_VER',
+  'DASHBOARD_VER',
+];
+
+export type EscopoToken = 'sessao' | 'completo';
+
+/** Usuário autenticado (derivado do JWT pela API). */
 export interface Usuario {
-  sub: string;
-  tipo: 'gerente' | 'funcionario';
+  id: string;
   nome: string;
+  escopo: EscopoToken;
+  estabelecimentoId?: string;
+  permissoes: Permissao[];
   deveTrocarSenha?: boolean;
 }
 
-export interface LoginResp {
+export interface EstabelecimentoRef {
+  id: string;
+  nome: string;
+}
+
+export interface TokenCompleto {
   token: string;
+  escopo: 'completo';
   usuario: Usuario;
 }
+
+export interface TokenSessao {
+  sessionToken: string;
+  escopo: 'sessao';
+  usuario: { id: string; nome: string };
+  estabelecimentos: EstabelecimentoRef[];
+}
+
+export type LoginResp = TokenCompleto | TokenSessao;
+
+// ── Tipos de domínio ─────────────────────────────────────────────────────
 
 export interface ListaResumo {
   id: string;
   nome: string;
-}
-
-export interface Funcionario {
-  id: string;
-  nome: string;
-  cargo: string | null;
-  foto: string | null;
-  ativo: boolean;
-  pinDefinido: boolean;
-  listas: ListaResumo[];
-  status: StatusFuncionario;
-  desde: string | null;
-  ultimoPonto: { tipo: TipoPonto; registradoEm: string } | null;
-  criadoEm: string;
 }
 
 export interface UltimoEstoque {
@@ -119,17 +162,27 @@ export interface Ponto {
   corrigidoEm: string | null;
   valorAnterior: string | null;
   justificativa: string | null;
-  funcionario: { id: string; nome: string };
+  funcionario: { id: string };
 }
 
-export interface Gerente {
+export interface Membro {
   id: string;
   nome: string;
-  email: string;
+  email: string | null;
+  documento: string | null;
+  cargo: string | null;
   ativo: boolean;
-  deveTrocarSenha: boolean;
-  ultimoAcesso: string | null;
-  criadoEm: string;
+  temCodigoAcesso: boolean;
+  usuarioId: string;
+  roles: { id: string; nome: string }[];
+}
+
+export interface Role {
+  id: string;
+  nome: string;
+  sistema: boolean;
+  permissoes: Permissao[];
+  membros?: number;
 }
 
 export interface Dashboard {
@@ -207,6 +260,10 @@ export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem(TOKEN_KEY);
 }
+export function getSessionToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(SESSION_KEY);
+}
 export function getUsuario(): Usuario | null {
   if (typeof window === 'undefined') return null;
   const raw = window.localStorage.getItem(USER_KEY);
@@ -215,19 +272,26 @@ export function getUsuario(): Usuario | null {
 export function setAuth(token: string, usuario: Usuario) {
   window.localStorage.setItem(TOKEN_KEY, token);
   window.localStorage.setItem(USER_KEY, JSON.stringify(usuario));
+  window.localStorage.removeItem(SESSION_KEY);
+}
+export function setSessionToken(t: string) {
+  window.localStorage.setItem(SESSION_KEY, t);
 }
 export function clearAuth() {
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
+  window.localStorage.removeItem(SESSION_KEY);
   clearApiCache();
 }
 
-// ── Cache de leitura (SWR) + dedup de requisições ────────────────────────
-// Objetivo: (1) duas chamadas GET idênticas disparadas quase juntas
-// (ex.: dashboard no layout + na tela) compartilham UMA ida à rede;
-// (2) navegar entre telas mostra o dado cacheado na hora enquanto
-// revalida em background, em vez de spinner cheio a cada navegação.
-const CACHE_TTL = 30_000; // ms — janela de "fresco"
+/** Helper de permissão: true se o usuário tem TODAS as listadas. */
+export function temPermissao(u: Usuario | null, ...p: Permissao[]) {
+  if (!u || u.escopo !== 'completo') return false;
+  return p.every((x) => u.permissoes.includes(x));
+}
+
+// ── Cache de leitura + dedup ─────────────────────────────────────────────
+const CACHE_TTL = 30_000;
 interface CacheEntry {
   t: number;
   v: unknown;
@@ -235,7 +299,6 @@ interface CacheEntry {
 const gcache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<unknown>>();
 
-/** Snapshot síncrono do cache (usado pelo useApi p/ pintar na hora). */
 export function peekCache<T>(
   key: string,
 ): { data: T; stale: boolean } | null {
@@ -243,14 +306,12 @@ export function peekCache<T>(
   if (!e) return null;
   return { data: e.v as T, stale: Date.now() - e.t > CACHE_TTL };
 }
-
-/** Zera tudo — chamado no logout e quando a sessão cai (401/403). */
 export function clearApiCache() {
   gcache.clear();
   inflight.clear();
 }
 
-// ── Erro de API ──────────────────────────────────────────────────────────
+// ── Erro ────────────────────────────────────────────────────────────────
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -264,8 +325,9 @@ export class ApiError extends Error {
 async function doRequest<T>(
   path: string,
   options: RequestInit = {},
+  authOverride?: string | null,
 ): Promise<T> {
-  const token = getToken();
+  const token = authOverride !== undefined ? authOverride : getToken();
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: {
@@ -276,7 +338,6 @@ async function doRequest<T>(
   });
 
   if (res.status === 401 || res.status === 403) {
-    // Sessão inválida/expirada — limpa e empurra para o login.
     if (typeof window !== 'undefined' && !path.startsWith('/auth/')) {
       clearAuth();
       if (window.location.pathname !== '/login') {
@@ -299,8 +360,6 @@ async function doRequest<T>(
   return corpo as T;
 }
 
-// GET → dedup de chamadas concorrentes + write-through no cache.
-// Mutação (POST/PATCH/...) → invalida o cache de leitura.
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -341,58 +400,37 @@ function qs(params: Record<string, string | number | undefined>) {
 // ── Endpoints ────────────────────────────────────────────────────────────
 export const api = {
   // auth
-  loginGerente: (email: string, senha: string) =>
-    request<LoginResp>('/auth/gerente/login', {
+  login: (email: string, senha: string) =>
+    request<LoginResp>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, senha }),
     }),
+  meusEstabelecimentos: () =>
+    doRequest<EstabelecimentoRef[]>(
+      '/auth/meus-estabelecimentos',
+      { method: 'GET' },
+      getSessionToken(),
+    ),
+  selecionarEstabelecimento: (estabelecimentoId: string) =>
+    doRequest<TokenCompleto>(
+      `/auth/selecionar-estabelecimento/${estabelecimentoId}`,
+      { method: 'POST' },
+      getSessionToken(),
+    ),
   trocarSenha: (senhaAtual: string, novaSenha: string) =>
-    request<{ mensagem: string }>('/auth/gerente/trocar-senha', {
+    request<{ mensagem: string }>('/auth/trocar-senha', {
       method: 'POST',
       body: JSON.stringify({ senhaAtual, novaSenha }),
     }),
 
   // dashboard / relatórios
   dashboard: () => request<Dashboard>('/dashboard'),
-  // Enxuto p/ os badges da sidebar (evita o payload pesado de /dashboard).
   alertasResumo: () =>
     request<{ ponto: number; contagem: number; sync: number }>(
       '/dashboard/alertas-resumo',
     ),
   relatorios: (periodo: string) =>
     request<Relatorio>(`/relatorios${qs({ periodo })}`),
-
-  // funcionários
-  funcionarios: (busca?: string) =>
-    request<Paginado<Funcionario>>(
-      `/funcionarios${qs({ busca, limit: 100 })}`,
-    ),
-  criarFuncionario: (body: {
-    nome: string;
-    cargo?: string;
-    listaIds?: string[];
-  }) =>
-    request<Funcionario>('/funcionarios', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-  atualizarFuncionario: (
-    id: string,
-    body: {
-      nome?: string;
-      cargo?: string;
-      ativo?: boolean;
-      listaIds?: string[];
-    },
-  ) =>
-    request<Funcionario>(`/funcionarios/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }),
-  resetarPin: (id: string) =>
-    request<{ mensagem: string }>(`/funcionarios/${id}/resetar-pin`, {
-      method: 'POST',
-    }),
 
   // itens
   itens: (categoria?: CategoriaItem, busca?: string) =>
@@ -435,7 +473,7 @@ export const api = {
   criarContagem: (body: {
     templateId: string;
     data: string;
-    funcionarioIds: string[];
+    membershipIds: string[];
   }) =>
     request<ContagemDetalhe>('/contagens', {
       method: 'POST',
@@ -450,7 +488,7 @@ export const api = {
 
   // pontos
   pontos: (params: {
-    funcionarioId?: string;
+    membershipId?: string;
     de?: string;
     ate?: string;
     tipo?: TipoPonto;
@@ -464,22 +502,64 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  // gerentes
-  gerentes: () => request<Gerente[]>('/gerentes'),
-  criarGerente: (body: { nome: string; email: string; senha: string }) =>
-    request<Gerente>('/gerentes', {
+  // membros (gestão de pessoas no estabelecimento)
+  membros: () => request<Membro[]>('/membros'),
+  membro: (id: string) => request<Membro>(`/membros/${id}`),
+  criarMembro: (body: {
+    nome: string;
+    email?: string;
+    documento?: string;
+    cargo?: string;
+    roleIds: string[];
+    senha?: string;
+    gerarCodigo?: boolean;
+  }) =>
+    request<Membro>('/membros', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  atualizarGerente: (id: string, body: { nome?: string; ativo?: boolean }) =>
-    request<Gerente>(`/gerentes/${id}`, {
+  atualizarMembro: (
+    id: string,
+    body: { cargo?: string; roleIds?: string[]; ativo?: boolean },
+  ) =>
+    request<Membro>(`/membros/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
-  desativarGerente: (id: string) =>
-    request<Gerente>(`/gerentes/${id}/desativar`, { method: 'POST' }),
-  resetarSenhaGerente: (id: string) =>
-    request<{ senhaTemporaria: string }>(`/gerentes/${id}/resetar-senha`, {
+  desativarMembro: (id: string) =>
+    request<{ mensagem: string }>(`/membros/${id}/desativar`, {
       method: 'POST',
     }),
+  resetarSenhaMembro: (id: string) =>
+    request<{ senhaTemporaria: string }>(`/membros/${id}/resetar-senha`, {
+      method: 'POST',
+    }),
+  resetarPinMembro: (id: string) =>
+    request<{ mensagem: string }>(`/membros/${id}/resetar-pin`, {
+      method: 'POST',
+    }),
+  regenerarCodigoMembro: (id: string) =>
+    request<{ codigoAcesso: string }>(`/membros/${id}/codigo-acesso`, {
+      method: 'POST',
+    }),
+
+  // roles (funções customizáveis por estabelecimento)
+  catalogoPermissoes: () =>
+    request<Permissao[]>('/roles/permissoes'),
+  roles: () => request<Role[]>('/roles'),
+  criarRole: (body: { nome: string; permissoes: Permissao[] }) =>
+    request<Role>('/roles', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  atualizarRole: (
+    id: string,
+    body: { nome?: string; permissoes?: Permissao[] },
+  ) =>
+    request<Role>(`/roles/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  removerRole: (id: string) =>
+    request<{ mensagem: string }>(`/roles/${id}`, { method: 'DELETE' }),
 };

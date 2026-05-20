@@ -6,8 +6,8 @@ import {
   api,
   type ContagemDetalhe,
   type ContagemResumo,
-  type Funcionario,
   type Lista,
+  type Membro,
 } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { fmtDataContagem, fmtQtd, hojeISO } from '@/lib/format';
@@ -36,11 +36,11 @@ export default function ContagensScreen() {
     [],
   );
   const { data: listasData } = useApi(() => api.listas(), []);
-  const { data: funcsData } = useApi(() => api.funcionarios(), []);
+  const { data: funcsData } = useApi(() => api.membros(), []);
 
   const contagens = data ?? [];
   const listas = listasData ?? [];
-  const funcionarios = funcsData?.dados ?? [];
+  const funcionarios = funcsData ?? [];
   const totalDoTemplate = useMemo(
     () => new Map(listas.map((l) => [l.id, l.totalItens])),
     [listas],
@@ -529,7 +529,7 @@ function NovaContagemDrawer({
   onSaved,
 }: {
   listas: Lista[];
-  funcionarios: Funcionario[];
+  funcionarios: Membro[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -540,9 +540,8 @@ function NovaContagemDrawer({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  const candidatos = funcionarios.filter(
-    (f) => f.ativo && f.listas.some((l) => l.id === templateId),
-  );
+  // (F1.3c) sem atribuição lista→pessoa; qualquer membro ativo pode contar.
+  const candidatos = funcionarios.filter((f) => f.ativo);
 
   async function salvar() {
     setErro(null);
@@ -554,7 +553,7 @@ function NovaContagemDrawer({
       await api.criarContagem({
         templateId,
         data,
-        funcionarioIds: sel,
+        membershipIds: sel,
       });
       onSaved();
     } catch (e) {

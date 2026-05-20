@@ -13,14 +13,25 @@ import {
   getToken,
   getUsuario,
   setAuth,
+  setSessionToken,
+  temPermissao,
+  type EstabelecimentoRef,
+  type Permissao,
   type Usuario,
 } from './api';
+
+export type EntrarResp =
+  | { tipo: 'ok'; usuario: Usuario }
+  | { tipo: 'escolher'; estabelecimentos: EstabelecimentoRef[] };
 
 interface AuthCtx {
   usuario: Usuario | null;
   pronto: boolean; // já leu o localStorage
-  entrar: (email: string, senha: string) => Promise<Usuario>;
+  entrar: (email: string, senha: string) => Promise<EntrarResp>;
+  selecionarEstabelecimento: (id: string) => Promise<Usuario>;
   sair: () => void;
+  /** true se o usuário tem TODAS as permissões listadas. */
+  pode: (...p: Permissao[]) => boolean;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -34,8 +45,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPronto(true);
   }, []);
 
-  const entrar = useCallback(async (email: string, senha: string) => {
-    const resp = await api.loginGerente(email, senha);
+  const entrar = useCallback(
+    async (email: string, senha: string): Promise<EntrarResp> => {
+      const resp = await api.login(email, senha);
+      if (resp.escopo === 'completo') {
+        setAuth(resp.token, resp.usuario);
+        setUsuario(resp.usuario);
+        return { tipo: 'ok', usuario: resp.usuario };
+      }
+      // sessão: guardar sessionToken; a UI escolhe o estabelecimento.
+      setSessionToken(resp.sessionToken);
+      return { tipo: 'escolher', estabelecimentos: resp.estabelecimentos };
+    },
+    [],
+  );
+
+  const selecionarEstabelecimento = useCallback(async (id: string) => {
+    const resp = await api.selecionarEstabelecimento(id);
     setAuth(resp.token, resp.usuario);
     setUsuario(resp.usuario);
     return resp.usuario;
@@ -47,8 +73,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/login';
   }, []);
 
+  const pode = useCallback(
+    (...p: Permissao[]) => temPermissao(usuario, ...p),
+    [usuario],
+  );
+
   return (
-    <Ctx.Provider value={{ usuario, pronto, entrar, sair }}>
+    <Ctx.Provider
+      value={{
+        usuario,
+        pronto,
+        entrar,
+        selecionarEstabelecimento,
+        sair,
+        pode,
+      }}
+    >
       {children}
     </Ctx.Provider>
   );

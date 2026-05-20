@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { WT } from '@/lib/theme';
-import { api, type Funcionario, type Item, type Lista } from '@/lib/api';
+import { api, type Item, type Lista } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { CATEGORIA_TONE } from '@/lib/format';
 import {
-  WAvatar,
   WButton,
   WCard,
   WDrawer,
@@ -25,28 +24,20 @@ export default function ListasScreen() {
     '/listas-contagem',
   );
   const { data: itensData } = useApi(() => api.itens(), []);
-  const { data: funcsData, reload: reloadFuncs } = useApi(
-    () => api.funcionarios(),
-    [],
-  );
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<
-    null | 'nova' | 'renomear' | 'addItem' | 'pessoas'
+    null | 'nova' | 'renomear' | 'addItem'
   >(null);
 
   const todasListas = listas ?? [];
   const catalogo = itensData?.dados ?? [];
-  const funcionarios = funcsData?.dados ?? [];
 
   useEffect(() => {
     if (!activeId && todasListas.length) setActiveId(todasListas[0].id);
   }, [todasListas, activeId]);
 
   const lista = todasListas.find((l) => l.id === activeId) || null;
-  const pessoas = funcionarios.filter((f) =>
-    f.listas.some((l) => l.id === activeId),
-  );
 
   async function salvarItens(novaOrdem: string[]) {
     if (!lista) return;
@@ -246,71 +237,10 @@ export default function ListasScreen() {
                 </WButton>
               </div>
 
-              {/* Quem pode contar */}
-              <div
-                style={{
-                  padding: '14px 22px',
-                  borderBottom: `1px solid ${T.line}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: T.ink3,
-                      fontWeight: 700,
-                      letterSpacing: 0.4,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    quem pode contar
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      marginTop: 8,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div style={{ display: 'flex' }}>
-                      {pessoas.map((f, i) => (
-                        <div
-                          key={f.id}
-                          style={{ marginLeft: i === 0 ? 0 : -8 }}
-                          title={f.nome}
-                        >
-                          <WAvatar name={f.nome} size={28} />
-                        </div>
-                      ))}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: T.ink2,
-                        marginLeft: 10,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {pessoas.length === 0
-                        ? 'ninguém atribuído'
-                        : pessoas
-                            .map((f) => f.nome.split(' ')[0])
-                            .join(', ')}
-                    </div>
-                  </div>
-                </div>
-                <WButton
-                  kind="neutral"
-                  size="sm"
-                  icon="plus"
-                  onClick={() => setDrawer('pessoas')}
-                >
-                  atribuir pessoas
-                </WButton>
-              </div>
+              {/* (F1.3c) atribuição de "quem pode contar" por lista foi
+                  removida: qualquer membro com permissão de CONTAGEM_CONTAR
+                  acessa as listas via contagem; a atribuição agora é por
+                  contagem, não por lista. */}
 
               {/* Itens */}
               <div
@@ -400,17 +330,6 @@ export default function ListasScreen() {
           onSaved={(ids) => {
             setDrawer(null);
             salvarItens(ids);
-          }}
-        />
-      )}
-      {drawer === 'pessoas' && lista && (
-        <PessoasDrawer
-          listaId={lista.id}
-          funcionarios={funcionarios}
-          onClose={() => setDrawer(null)}
-          onSaved={() => {
-            setDrawer(null);
-            reloadFuncs();
           }}
         />
       )}
@@ -873,141 +792,6 @@ function AddItemDrawer({
               </div>
               <div style={{ fontSize: 12, color: T.ink3 }}>
                 {i.unidade}
-              </div>
-            </label>
-          );
-        })}
-      </div>
-    </WDrawer>
-  );
-}
-
-function PessoasDrawer({
-  listaId,
-  funcionarios,
-  onClose,
-  onSaved,
-}: {
-  listaId: string;
-  funcionarios: Funcionario[];
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const T = WT;
-  const ativos = funcionarios.filter((f) => f.ativo);
-  const [sel, setSel] = useState<Set<string>>(
-    new Set(
-      ativos
-        .filter((f) => f.listas.some((l) => l.id === listaId))
-        .map((f) => f.id),
-    ),
-  );
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  async function salvar() {
-    setSalvando(true);
-    setErro(null);
-    try {
-      // Persiste só quem mudou (adiciona/remove a lista do funcionário).
-      for (const f of ativos) {
-        const tinha = f.listas.some((l) => l.id === listaId);
-        const tem = sel.has(f.id);
-        if (tinha === tem) continue;
-        const ids = f.listas.map((l) => l.id);
-        const novos = tem
-          ? [...ids, listaId]
-          : ids.filter((id) => id !== listaId);
-        await api.atualizarFuncionario(f.id, { listaIds: novos });
-      }
-      onSaved();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'erro ao salvar');
-      setSalvando(false);
-    }
-  }
-
-  return (
-    <WDrawer
-      open
-      onClose={onClose}
-      title="quem pode contar"
-      subtitle="marque os funcionários que podem fazer esta lista"
-      footer={
-        <>
-          <div style={{ flex: 1 }} />
-          <WButton kind="neutral" size="md" onClick={onClose}>
-            cancelar
-          </WButton>
-          <WButton
-            kind="primary"
-            size="md"
-            onClick={salvar}
-            disabled={salvando}
-          >
-            salvar
-          </WButton>
-        </>
-      }
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {erro && (
-          <div
-            style={{
-              padding: '10px 12px',
-              background: T.dangerSoft,
-              borderRadius: 8,
-              fontSize: 13,
-              color: T.danger,
-              fontWeight: 600,
-            }}
-          >
-            {erro}
-          </div>
-        )}
-        {ativos.map((f) => {
-          const checked = sel.has(f.id);
-          return (
-            <label
-              key={f.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '10px 12px',
-                border: `1px solid ${checked ? T.ink : T.line}`,
-                borderRadius: 9,
-                background: checked ? T.lineSoft : T.surface2,
-                cursor: 'pointer',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() =>
-                  setSel((s) => {
-                    const n = new Set(s);
-                    if (n.has(f.id)) n.delete(f.id);
-                    else n.add(f.id);
-                    return n;
-                  })
-                }
-                style={{ accentColor: T.ink, width: 16, height: 16 }}
-              />
-              <WAvatar name={f.nome} size={28} />
-              <div
-                style={{
-                  flex: 1,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: T.ink,
-                  letterSpacing: -0.1,
-                }}
-              >
-                {f.nome}
-              </div>
-              <div style={{ fontSize: 12, color: T.ink3 }}>
-                {f.cargo || ''}
               </div>
             </label>
           );
