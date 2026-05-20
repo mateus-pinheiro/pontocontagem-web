@@ -17,6 +17,7 @@ import {
   temPermissao,
   type EstabelecimentoRef,
   type Permissao,
+  type TokenCompleto,
   type Usuario,
 } from './api';
 
@@ -48,12 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const entrar = useCallback(
     async (email: string, senha: string): Promise<EntrarResp> => {
       const resp = await api.login(email, senha);
-      if (resp.escopo === 'completo') {
-        setAuth(resp.token, resp.usuario);
-        setUsuario(resp.usuario);
-        return { tipo: 'ok', usuario: resp.usuario };
+      // discrimina pelo shape do body: completo tem `token`+`usuario`;
+      // sessão tem `sessionToken`+`estabelecimentos`+`precisaSelecionar`.
+      if ('token' in resp) {
+        const completo = resp as TokenCompleto;
+        setAuth(completo.token, completo.usuario);
+        setUsuario(completo.usuario);
+        return { tipo: 'ok', usuario: completo.usuario };
       }
-      // sessão: guardar sessionToken; a UI escolhe o estabelecimento.
       setSessionToken(resp.sessionToken);
       return { tipo: 'escolher', estabelecimentos: resp.estabelecimentos };
     },

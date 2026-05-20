@@ -54,14 +54,12 @@ export const TODAS_PERMISSOES: Permissao[] = [
   'DASHBOARD_VER',
 ];
 
-export type EscopoToken = 'sessao' | 'completo';
-
-/** Usuário autenticado (derivado do JWT pela API). */
+/** Usuário autenticado (shape devolvido pela API no token completo). */
 export interface Usuario {
   id: string;
   nome: string;
-  escopo: EscopoToken;
-  estabelecimentoId?: string;
+  estabelecimentoId: string;
+  estabelecimentoNome: string;
   permissoes: Permissao[];
   deveTrocarSenha?: boolean;
 }
@@ -71,17 +69,17 @@ export interface EstabelecimentoRef {
   nome: string;
 }
 
+/** Resposta do login quando o usuário tem 1 estabelecimento ativo. */
 export interface TokenCompleto {
   token: string;
-  escopo: 'completo';
   usuario: Usuario;
 }
 
+/** Resposta do login quando há >1 estabelecimento e o cliente precisa escolher. */
 export interface TokenSessao {
   sessionToken: string;
-  escopo: 'sessao';
-  usuario: { id: string; nome: string };
   estabelecimentos: EstabelecimentoRef[];
+  precisaSelecionar: true;
 }
 
 export type LoginResp = TokenCompleto | TokenSessao;
@@ -286,7 +284,7 @@ export function clearAuth() {
 
 /** Helper de permissão: true se o usuário tem TODAS as listadas. */
 export function temPermissao(u: Usuario | null, ...p: Permissao[]) {
-  if (!u || u.escopo !== 'completo') return false;
+  if (!u) return false;
   return p.every((x) => u.permissoes.includes(x));
 }
 
