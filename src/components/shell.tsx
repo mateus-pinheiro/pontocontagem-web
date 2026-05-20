@@ -13,6 +13,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { WT } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { fmtDataLonga } from '@/lib/format';
+import type { Permissao } from '@/lib/api';
 import { WAvatar, WIcon, WInput } from './ui';
 import { BrandMark } from './BrandMark';
 
@@ -21,20 +22,22 @@ export interface NavItem {
   label: string;
   icon: string;
   href: string;
+  /** Se definido, o item só aparece para quem tem a permissão. */
+  perm?: Permissao;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard', label: 'painel', icon: 'dashboard', href: '/' },
-  { id: 'pontos', label: 'pontos', icon: 'clock', href: '/pontos' },
-  { id: 'contagens', label: 'contagens', icon: 'clipboard', href: '/contagens' },
-  { id: 'funcionarios', label: 'funcionários', icon: 'people', href: '/funcionarios' },
-  { id: 'itens', label: 'itens', icon: 'box', href: '/itens' },
-  { id: 'listas', label: 'listas de contagem', icon: 'list', href: '/listas' },
-  { id: 'relatorios', label: 'relatórios', icon: 'chart', href: '/relatorios' },
+  { id: 'dashboard', label: 'painel', icon: 'dashboard', href: '/', perm: 'DASHBOARD_VER' },
+  { id: 'pontos', label: 'pontos', icon: 'clock', href: '/pontos', perm: 'PONTO_CORRIGIR' },
+  { id: 'contagens', label: 'contagens', icon: 'clipboard', href: '/contagens', perm: 'CONTAGEM_CRIAR' },
+  { id: 'membros', label: 'membros', icon: 'people', href: '/membros', perm: 'USUARIO_GERENCIAR' },
+  { id: 'itens', label: 'itens', icon: 'box', href: '/itens', perm: 'ITEM_GERENCIAR' },
+  { id: 'listas', label: 'listas de contagem', icon: 'list', href: '/listas', perm: 'LISTA_GERENCIAR' },
+  { id: 'relatorios', label: 'relatórios', icon: 'chart', href: '/relatorios', perm: 'RELATORIO_VER' },
 ];
 
 const NAV_SECONDARY: NavItem[] = [
-  { id: 'gerentes', label: 'gerentes', icon: 'shield', href: '/gerentes' },
+  { id: 'roles', label: 'funções', icon: 'shield', href: '/roles', perm: 'ROLE_GERENCIAR' },
 ];
 
 // ── Busca global (compartilhada entre topbar e telas) ────────────────────
@@ -105,7 +108,7 @@ function Sidebar({
   onNavigate: (item: NavItem) => void;
   alerts?: Record<string, number>;
 }) {
-  const { usuario, sair } = useAuth();
+  const { usuario, sair, pode } = useAuth();
   const [menu, setMenu] = useState(false);
   return (
     <aside
@@ -153,7 +156,7 @@ function Sidebar({
       </div>
 
       <div style={{ padding: '6px 10px 0', flex: 1, overflowY: 'auto' }}>
-        {NAV_ITEMS.map((item) => (
+        {NAV_ITEMS.filter((i) => !i.perm || pode(i.perm)).map((item) => (
           <SidebarItem
             key={item.id}
             item={item}
@@ -167,7 +170,7 @@ function Sidebar({
             height: 1, background: WT.line, margin: '12px 8px',
           }}
         />
-        {NAV_SECONDARY.map((item) => (
+        {NAV_SECONDARY.filter((i) => !i.perm || pode(i.perm)).map((item) => (
           <SidebarItem
             key={item.id}
             item={item}

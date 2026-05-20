@@ -65,19 +65,22 @@ export default function PontosScreen() {
       api.pontos({
         de,
         ate,
-        funcionarioId:
+        membershipId:
           funcFilter === 'todos' ? undefined : funcFilter,
       }),
     [de, ate, funcFilter],
   );
-  const { data: funcsData } = useApi(() => api.funcionarios(), []);
-
-  const pontos = (data ?? []).filter(
-    (p) =>
-      !search ||
-      p.funcionario.nome.toLowerCase().includes(search.toLowerCase()),
+  const { data: funcsData } = useApi(() => api.membros(), []);
+  const funcionarios = funcsData?.filter((m) => m.ativo) ?? [];
+  const nomePor = useMemo(
+    () => new Map(funcionarios.map((m) => [m.id, m.nome])),
+    [funcionarios],
   );
-  const funcionarios = funcsData?.dados.filter((f) => f.ativo) ?? [];
+
+  const pontos = (data ?? []).filter((p) => {
+    const nome = nomePor.get(p.funcionario.id) ?? '';
+    return !search || nome.toLowerCase().includes(search.toLowerCase());
+  });
   const editando = edit ? pontos.find((p) => p.id === edit) || null : null;
 
   return (
@@ -186,7 +189,7 @@ export default function PontosScreen() {
                           }}
                         >
                           <WAvatar
-                            name={p.funcionario.nome}
+                            name={nomePor.get(p.funcionario.id) ?? '—'}
                             size={26}
                           />
                           <span
@@ -196,7 +199,7 @@ export default function PontosScreen() {
                               letterSpacing: -0.1,
                             }}
                           >
-                            {p.funcionario.nome}
+                            {nomePor.get(p.funcionario.id) ?? '—'}
                           </span>
                         </div>
                       </WTd>
@@ -313,6 +316,7 @@ export default function PontosScreen() {
       {editando && (
         <CorrigirPontoDrawer
           ponto={editando}
+          nome={nomePor.get(editando.funcionario.id) ?? '—'}
           onClose={() => setEdit(null)}
           onSaved={() => {
             setEdit(null);
@@ -326,10 +330,12 @@ export default function PontosScreen() {
 
 function CorrigirPontoDrawer({
   ponto,
+  nome,
   onClose,
   onSaved,
 }: {
   ponto: Ponto;
+  nome: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -383,7 +389,7 @@ function CorrigirPontoDrawer({
       open
       onClose={onClose}
       title="corrigir ponto"
-      subtitle={`${ponto.funcionario.nome} · ${TIPO_PONTO_LABEL[ponto.tipo]}`}
+      subtitle={`${nome} · ${TIPO_PONTO_LABEL[ponto.tipo]}`}
       footer={
         <>
           <div style={{ flex: 1 }} />
