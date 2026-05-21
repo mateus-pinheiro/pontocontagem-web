@@ -9,6 +9,7 @@ import {
   type Permissao,
   type Role,
 } from '@/lib/api';
+import { labelRole } from '@/lib/format';
 import {
   WButton,
   WDrawer,
@@ -151,7 +152,9 @@ export default function RolesScreen() {
                         gap: 8,
                       }}
                     >
-                      <span style={{ fontWeight: 600 }}>{r.nome}</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {labelRole(r.nome)}
+                      </span>
                       {r.sistema && (
                         <WTag tone="terra" size="xs">
                           sistema

@@ -147,3 +147,8 @@ export function isoParaLocal(iso: string): string {
     d.getDate(),
   )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+/** Display label de role — só no front. API/banco continuam usando "ADMIN". */
+export function labelRole(nome: string): string {
+  return nome === 'ADMIN' ? 'Administrador' : nome;
+}

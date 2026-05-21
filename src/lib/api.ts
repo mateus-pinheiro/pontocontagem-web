@@ -191,6 +191,8 @@ export interface Membro {
   cargo: string | null;
   ativo: boolean;
   temCodigoAcesso: boolean;
+  temSenha: boolean;
+  temPin: boolean;
   usuarioId: string;
   roles: { id: string; nome: string }[];
 }
@@ -558,7 +560,7 @@ export const api = {
     senha?: string;
     gerarCodigo?: boolean;
   }) =>
-    request<Membro>('/membros', {
+    request<Membro & { codigoAcesso?: string }>('/membros', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
