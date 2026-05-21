@@ -214,10 +214,19 @@ export default function MembrosScreen() {
                         )}
                       </WTd>
                       <WTd>
-                        {m.temCodigoAcesso ? (
-                          <WTag tone="terra" size="xs">
-                            gerado
-                          </WTag>
+                        {m.codigoAcesso ? (
+                          <span
+                            style={{
+                              fontFamily: T.fontMono,
+                              fontSize: 12,
+                              letterSpacing: 1,
+                              color: T.terraInk,
+                              fontWeight: 600,
+                              userSelect: 'all',
+                            }}
+                          >
+                            {m.codigoAcesso}
+                          </span>
                         ) : (
                           <span style={{ color: T.ink4 }}>—</span>
                         )}
@@ -849,6 +858,7 @@ function ModalCodigo({
   nome: string;
   onFechar: () => void;
 }) {
+  const [copiado, setCopiado] = useState(false);
   return (
     <div
       onClick={onFechar}
@@ -918,15 +928,17 @@ function ModalCodigo({
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <WButton
-            kind="primary"
+            kind={copiado ? 'success' : 'primary'}
             size="md"
-            icon="copy"
+            icon={copiado ? 'check' : 'copy'}
             fullWidth
             onClick={() => {
               navigator.clipboard?.writeText(codigo);
+              setCopiado(true);
+              setTimeout(() => setCopiado(false), 1800);
             }}
           >
-            copiar código
+            {copiado ? 'copiado!' : 'copiar código'}
           </WButton>
           <WButton kind="neutral" size="md" onClick={onFechar}>
             fechar

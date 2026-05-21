@@ -190,6 +190,7 @@ export interface Membro {
   documento: string | null;
   cargo: string | null;
   ativo: boolean;
+  codigoAcesso: string | null;
   temCodigoAcesso: boolean;
   temSenha: boolean;
   temPin: boolean;
