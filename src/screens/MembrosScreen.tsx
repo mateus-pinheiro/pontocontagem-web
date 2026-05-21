@@ -316,13 +316,23 @@ export default function MembrosScreen() {
         onSalvar={(id, body) =>
           executarAcao(api.atualizarMembro(id, body))
         }
-        onDesativar={(id) =>
-          executarAcao(api.desativarMembro(id), () => ({
-            titulo: 'membro desativado',
-            valor: '',
-            ajuda: 'ele não consegue mais acessar.',
-          }))
-        }
+        onDesativar={async (id) => {
+          setErro(null);
+          try {
+            await api.desativarMembro(id);
+            await carregar();
+            setDrawer({ tipo: 'fechado' });
+            setAviso({
+              titulo: 'membro desativado',
+              valor: '',
+              ajuda: 'ele não consegue mais acessar.',
+            });
+          } catch (e) {
+            setErro(
+              e instanceof ApiError ? e.message : 'erro ao executar ação',
+            );
+          }
+        }}
         onResetarSenha={(id) =>
           executarAcao(api.resetarSenhaMembro(id), (r) => ({
             titulo: 'senha temporária',
