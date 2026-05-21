@@ -99,22 +99,48 @@ export interface UltimoEstoque {
 /** Cores aceitas pelo back; combinam com os `tone`s do <WTag>. */
 export type CorCategoria = 'neutral' | 'terra' | 'green' | 'blue' | 'amber';
 
-export interface Categoria {
+/** Setor = compartimento físico/operacional (bar, cozinha, limpeza). */
+export interface SetorResumo {
   id: string;
-  estabelecimentoId: string;
   nome: string;
   cor: CorCategoria;
-  sistema: boolean;
+}
+
+export interface Setor extends SetorResumo {
+  estabelecimentoId: string;
+  ordem: number;
   ativo: boolean;
+  categorias: number;
   criadoEm: string;
   atualizadoEm: string;
 }
 
-/** Snippet de categoria embarcado em item/contagem/relatório. */
+export interface Categoria {
+  id: string;
+  estabelecimentoId: string;
+  setorId: string;
+  parentId: string | null;
+  nome: string;
+  cor: CorCategoria;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+  setor: SetorResumo;
+  parent: { id: string; nome: string } | null;
+  filhas: number;
+}
+
+/**
+ * Snippet de categoria embarcado em item/contagem/relatório.
+ * `setor` e `parent` só vêm no payload de /itens (e endpoints que migrarem);
+ * /listas-contagem e /contagens ainda mandam só id/nome/cor.
+ */
 export interface CategoriaResumo {
   id: string;
   nome: string;
   cor: CorCategoria;
+  setor?: SetorResumo;
+  parent?: { id: string; nome: string } | null;
 }
 
 export interface Item {
@@ -463,16 +489,48 @@ export const api = {
   relatorios: (periodo: string) =>
     request<Relatorio>(`/relatorios${qs({ periodo })}`),
 
+  // setores (compartimentos do estabelecimento)
+  setores: () => request<Setor[]>('/setores'),
+  criarSetor: (body: { nome: string; cor?: CorCategoria; ordem?: number }) =>
+    request<Setor>('/setores', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  atualizarSetor: (
+    id: string,
+    body: {
+      nome?: string;
+      cor?: CorCategoria;
+      ordem?: number;
+      ativo?: boolean;
+    },
+  ) =>
+    request<Setor>(`/setores/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
   // categorias (catálogo por estabelecimento)
-  categorias: () => request<Categoria[]>('/categorias'),
-  criarCategoria: (body: { nome: string; cor?: CorCategoria }) =>
+  categorias: (setorId?: string) =>
+    request<Categoria[]>(`/categorias${qs({ setorId })}`),
+  criarCategoria: (body: {
+    nome: string;
+    setorId: string;
+    parentId?: string;
+    cor?: CorCategoria;
+  }) =>
     request<Categoria>('/categorias', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
   atualizarCategoria: (
     id: string,
-    body: { nome?: string; cor?: CorCategoria; ativo?: boolean },
+    body: {
+      nome?: string;
+      cor?: CorCategoria;
+      ativo?: boolean;
+      parentId?: string | null;
+    },
   ) =>
     request<Categoria>(`/categorias/${id}`, {
       method: 'PATCH',

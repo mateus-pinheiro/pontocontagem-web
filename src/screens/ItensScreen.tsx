@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { WT } from '@/lib/theme';
 import {
   api,
   type Categoria,
   type CorCategoria,
-  type Item,
   type ItemDetalhe,
+  type Setor,
 } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { fmtDataDetalhe, fmtQtd } from '@/lib/format';
@@ -42,13 +42,17 @@ const CORES: { value: CorCategoria; label: string }[] = [
   { value: 'neutral', label: 'neutro' },
 ];
 
+type DrawerState =
+  | null
+  | { tipo: 'item'; itemId: string | null }
+  | { tipo: 'categoria' };
+
 export default function ItensScreen() {
   const T = WT;
   const { search } = useSearch();
+  const [setorId, setSetorId] = useState<'todos' | string>('todos');
   const [catId, setCatId] = useState<'todas' | string>('todas');
-  const [drawer, setDrawer] = useState<
-    null | { tipo: 'item'; itemId: string | null } | { tipo: 'categoria' }
-  >(null);
+  const [drawer, setDrawer] = useState<DrawerState>(null);
   const [pulseNova, setPulseNova] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -62,19 +66,48 @@ export default function ItensScreen() {
     () => api.categorias(),
     [],
   );
+  const { data: setores, reload: reloadSetores } = useApi(
+    () => api.setores(),
+    [],
+  );
 
   const itens = data?.dados ?? [];
   const cats = categorias ?? [];
+  const setoresAll = setores ?? [];
+  const setoresAtivos = setoresAll.filter((s) => s.ativo);
   const catsAtivas = cats.filter((c) => c.ativo);
 
+  // Quando o setor muda, descarta filtro de categoria que não pertença a ele.
+  useEffect(() => {
+    if (catId === 'todas') return;
+    const c = cats.find((x) => x.id === catId);
+    if (!c) return;
+    if (setorId !== 'todos' && c.setorId !== setorId) {
+      setCatId('todas');
+    }
+  }, [setorId, catId, cats]);
+
+  const catsDoSetor =
+    setorId === 'todos'
+      ? catsAtivas
+      : catsAtivas.filter((c) => c.setorId === setorId);
+
   const list = itens.filter((i) => {
+    if (setorId !== 'todos' && i.categoria.setor?.id !== setorId) return false;
     if (catId !== 'todas' && i.categoria.id !== catId) return false;
     if (search && !i.nome.toLowerCase().includes(search.toLowerCase()))
       return false;
     return true;
   });
+
   const byCat = (id: string) =>
     itens.filter((i) => i.categoria.id === id).length;
+  const bySetor = (id: string) =>
+    itens.filter((i) => i.categoria.setor?.id === id).length;
+
+  function pedirSetorAntes() {
+    setAviso('crie pelo menos um setor antes de cadastrar categorias.');
+  }
 
   function pedirCategoriaAntes() {
     setAviso(
@@ -85,6 +118,10 @@ export default function ItensScreen() {
   }
 
   function abrirNovoItem() {
+    if (setoresAtivos.length === 0) {
+      pedirSetorAntes();
+      return;
+    }
     if (catsAtivas.length === 0) {
       pedirCategoriaAntes();
       return;
@@ -93,13 +130,22 @@ export default function ItensScreen() {
     setDrawer({ tipo: 'item', itemId: null });
   }
 
+  function abrirNovaCategoria() {
+    if (setoresAtivos.length === 0) {
+      pedirSetorAntes();
+      return;
+    }
+    setAviso(null);
+    setDrawer({ tipo: 'categoria' });
+  }
+
   return (
     <>
       <style>{pulseKeyframes}</style>
       <WPageHeader
         breadcrumb="cadastros"
         title="itens"
-        subtitle={`${itens.length} itens · ${cats.length} categorias`}
+        subtitle={`${itens.length} itens · ${cats.length} categorias · ${setoresAll.length} setores`}
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
             <div
@@ -114,7 +160,7 @@ export default function ItensScreen() {
                 kind="neutral"
                 size="md"
                 icon="plus"
-                onClick={() => setDrawer({ tipo: 'categoria' })}
+                onClick={abrirNovaCategoria}
               >
                 nova categoria
               </WButton>
@@ -133,17 +179,36 @@ export default function ItensScreen() {
 
       <WToolbar>
         <WSegmented
-          value={catId}
-          onChange={(v) => setCatId(v as 'todas' | string)}
+          value={setorId}
+          onChange={(v) => setSetorId(v as 'todos' | string)}
           options={[
-            { value: 'todas', label: `todas (${itens.length})` },
-            ...catsAtivas.map((c) => ({
-              value: c.id,
-              label: `${c.nome} (${byCat(c.id)})`,
+            { value: 'todos', label: `todos (${itens.length})` },
+            ...setoresAtivos.map((s) => ({
+              value: s.id,
+              label: `${s.nome} (${bySetor(s.id)})`,
             })),
           ]}
         />
       </WToolbar>
+
+      {catsDoSetor.length > 0 && (
+        <WToolbar>
+          <WSegmented
+            value={catId}
+            onChange={(v) => setCatId(v as 'todas' | string)}
+            options={[
+              {
+                value: 'todas',
+                label: `todas (${list.length})`,
+              },
+              ...catsDoSetor.map((c) => ({
+                value: c.id,
+                label: `${c.parent ? `${c.parent.nome} › ${c.nome}` : c.nome} (${byCat(c.id)})`,
+              })),
+            ]}
+          />
+        </WToolbar>
+      )}
 
       {aviso && (
         <div style={{ padding: '0 32px 12px' }}>
@@ -177,7 +242,7 @@ export default function ItensScreen() {
               <thead>
                 <tr>
                   <WTh>nome</WTh>
-                  <WTh width={140}>categoria</WTh>
+                  <WTh width={220}>categoria</WTh>
                   <WTh width={100} align="right">
                     unidade
                   </WTh>
@@ -207,9 +272,33 @@ export default function ItensScreen() {
                       </div>
                     </WTd>
                     <WTd>
-                      <WTag tone={i.categoria.cor as TagTone} dot>
-                        {i.categoria.nome}
-                      </WTag>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        {i.categoria.setor && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: T.ink3,
+                              fontWeight: 600,
+                              letterSpacing: 0.2,
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {i.categoria.setor.nome}
+                          </span>
+                        )}
+                        <WTag tone={i.categoria.cor as TagTone} dot>
+                          {i.categoria.parent
+                            ? `${i.categoria.parent.nome} › ${i.categoria.nome}`
+                            : i.categoria.nome}
+                        </WTag>
+                      </div>
                     </WTd>
                     <WTd
                       align="right"
@@ -267,7 +356,7 @@ export default function ItensScreen() {
             {list.length === 0 && (
               <WEmpty
                 icon="box"
-                title="nenhum item nessa categoria"
+                title="nenhum item nesse filtro"
                 subtitle="adicione um item novo ou troque o filtro."
               />
             )}
@@ -278,6 +367,7 @@ export default function ItensScreen() {
       {drawer?.tipo === 'item' && (
         <ItemDrawer
           itemId={drawer.itemId}
+          setores={setoresAtivos}
           categorias={catsAtivas}
           onClose={() => setDrawer(null)}
           onSaved={() => {
@@ -288,11 +378,14 @@ export default function ItensScreen() {
       )}
       {drawer?.tipo === 'categoria' && (
         <CategoriaDrawer
+          setores={setoresAtivos}
+          categorias={catsAtivas}
           onClose={() => setDrawer(null)}
           onSaved={() => {
             setDrawer(null);
             setAviso(null);
             reloadCats();
+            reloadSetores();
           }}
         />
       )}
@@ -306,13 +399,19 @@ const pulseKeyframes = `@keyframes wPulse {
   100% { box-shadow: 0 0 0 0   rgba(217,119,87,0); }
 }`;
 
+function rotuloCategoria(c: { nome: string; parent?: { nome: string } | null }) {
+  return c.parent ? `${c.parent.nome} › ${c.nome}` : c.nome;
+}
+
 function ItemDrawer({
   itemId,
+  setores,
   categorias,
   onClose,
   onSaved,
 }: {
   itemId: string | null;
+  setores: Setor[];
   categorias: Categoria[];
   onClose: () => void;
   onSaved: () => void;
@@ -321,27 +420,41 @@ function ItemDrawer({
   const isNew = itemId === null;
   const [detalhe, setDetalhe] = useState<ItemDetalhe | null>(null);
   const [nome, setNome] = useState('');
-  const [categoriaId, setCategoriaId] = useState<string>(
-    categorias[0]?.id ?? '',
-  );
+  const [setorId, setSetorId] = useState<string>(setores[0]?.id ?? '');
+  const [categoriaId, setCategoriaId] = useState<string>('');
   const [unidade, setUnidade] = useState('un');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  const opcoesCategoria = useMemo(
+    () => categorias.filter((c) => c.setorId === setorId),
+    [categorias, setorId],
+  );
+
   useEffect(() => {
-    if (isNew) return;
+    if (isNew) {
+      // ao criar: seleciona a primeira categoria do setor escolhido
+      if (
+        opcoesCategoria.length > 0 &&
+        !opcoesCategoria.some((c) => c.id === categoriaId)
+      ) {
+        setCategoriaId(opcoesCategoria[0].id);
+      }
+      return;
+    }
     api
       .item(itemId!)
       .then((d) => {
         setDetalhe(d);
         setNome(d.nome);
+        setSetorId(d.categoria.setor?.id ?? setores[0]?.id ?? '');
         setCategoriaId(d.categoria.id);
         setUnidade(d.unidade);
       })
       .catch((e) =>
         setErro(e instanceof Error ? e.message : 'erro ao carregar'),
       );
-  }, [itemId, isNew]);
+  }, [itemId, isNew, opcoesCategoria]);
 
   async function salvar() {
     setErro(null);
@@ -394,7 +507,7 @@ function ItemDrawer({
         isNew
           ? 'adicione ao catálogo'
           : i
-          ? i.categoria.nome
+          ? `${i.categoria.setor?.nome ?? ''}${i.categoria.setor ? ' · ' : ''}${rotuloCategoria(i.categoria)}`
           : 'carregando…'
       }
       footer={
@@ -455,27 +568,37 @@ function ItemDrawer({
           }}
         >
           <WSelect
+            label="setor"
+            value={setorId}
+            onChange={setSetorId}
+            options={setores.map((s) => ({ value: s.id, label: s.nome }))}
+          />
+          <WSelect
             label="categoria"
             value={categoriaId}
             onChange={setCategoriaId}
-            options={categorias.map((c) => ({
-              value: c.id,
-              label: c.nome,
-            }))}
-          />
-          <WSelect
-            label="unidade"
-            value={unidade}
-            onChange={setUnidade}
-            options={[
-              { value: 'un', label: 'unidades (un)' },
-              { value: 'kg', label: 'quilogramas (kg)' },
-              { value: 'L', label: 'litros (L)' },
-              { value: 'g', label: 'gramas (g)' },
-              { value: 'ml', label: 'mililitros (ml)' },
-            ]}
+            options={
+              opcoesCategoria.length === 0
+                ? [{ value: '', label: '— sem categorias nesse setor —' }]
+                : opcoesCategoria.map((c) => ({
+                    value: c.id,
+                    label: rotuloCategoria(c),
+                  }))
+            }
           />
         </div>
+        <WSelect
+          label="unidade"
+          value={unidade}
+          onChange={setUnidade}
+          options={[
+            { value: 'un', label: 'unidades (un)' },
+            { value: 'kg', label: 'quilogramas (kg)' },
+            { value: 'L', label: 'litros (L)' },
+            { value: 'g', label: 'gramas (g)' },
+            { value: 'ml', label: 'mililitros (ml)' },
+          ]}
+        />
 
         {!isNew && i && (
           <>
@@ -624,14 +747,20 @@ function ItemDrawer({
 }
 
 function CategoriaDrawer({
+  setores,
+  categorias,
   onClose,
   onSaved,
 }: {
+  setores: Setor[];
+  categorias: Categoria[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const T = WT;
   const [nome, setNome] = useState('');
+  const [setorId, setSetorId] = useState<string>(setores[0]?.id ?? '');
+  const [parentId, setParentId] = useState<string>('');
   const [cor, setCor] = useState<CorCategoria>('neutral');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -641,6 +770,20 @@ function CategoriaDrawer({
     inputRef.current?.querySelector('input')?.focus();
   }, []);
 
+  // Só categorias raiz do mesmo setor podem ser "pai".
+  const possiveisPais = useMemo(
+    () =>
+      categorias.filter((c) => c.setorId === setorId && c.parentId === null),
+    [categorias, setorId],
+  );
+
+  // Se o setor muda e o parent escolhido não pertence mais, limpa.
+  useEffect(() => {
+    if (parentId && !possiveisPais.some((p) => p.id === parentId)) {
+      setParentId('');
+    }
+  }, [setorId, parentId, possiveisPais]);
+
   async function salvar() {
     setErro(null);
     const n = nome.trim();
@@ -648,9 +791,18 @@ function CategoriaDrawer({
       setErro('o nome precisa de pelo menos 2 letras.');
       return;
     }
+    if (!setorId) {
+      setErro('escolha um setor.');
+      return;
+    }
     setSalvando(true);
     try {
-      await api.criarCategoria({ nome: n, cor });
+      await api.criarCategoria({
+        nome: n,
+        setorId,
+        cor,
+        ...(parentId ? { parentId } : {}),
+      });
       onSaved();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'erro ao salvar');
@@ -663,7 +815,7 @@ function CategoriaDrawer({
       open
       onClose={onClose}
       title="nova categoria"
-      subtitle="só para este estabelecimento"
+      subtitle="dentro de um setor; pode virar subcategoria de outra raiz"
       width={420}
       footer={
         <>
@@ -702,9 +854,28 @@ function CategoriaDrawer({
             label="nome"
             value={nome}
             onChange={setNome}
-            placeholder="ex: hortifruti, açougue, padaria…"
+            placeholder="ex: bebidas, hortifruti, cervejas…"
           />
         </div>
+        <WSelect
+          label="setor"
+          value={setorId}
+          onChange={setSetorId}
+          options={
+            setores.length === 0
+              ? [{ value: '', label: '— nenhum setor ativo —' }]
+              : setores.map((s) => ({ value: s.id, label: s.nome }))
+          }
+        />
+        <WSelect
+          label="é subcategoria de (opcional)"
+          value={parentId}
+          onChange={setParentId}
+          options={[
+            { value: '', label: '— categoria raiz do setor —' },
+            ...possiveisPais.map((p) => ({ value: p.id, label: p.nome })),
+          ]}
+        />
         <div>
           <div
             style={{
@@ -756,8 +927,8 @@ function CategoriaDrawer({
             lineHeight: 1.5,
           }}
         >
-          a categoria fica disponível só neste estabelecimento. as 3 padrão
-          (bar/cozinha/limpeza) já vêm criadas.
+          a categoria fica disponível só neste estabelecimento. para criar uma
+          subcategoria escolha um pai no campo acima.
         </div>
       </div>
     </WDrawer>
