@@ -420,6 +420,7 @@ function ItemDrawer({
   const isNew = itemId === null;
   const [detalhe, setDetalhe] = useState<ItemDetalhe | null>(null);
   const [nome, setNome] = useState('');
+  const [descricao, setDescricao] = useState('');
   const [setorId, setSetorId] = useState<string>(setores[0]?.id ?? '');
   const [categoriaId, setCategoriaId] = useState<string>('');
   const [unidade, setUnidade] = useState('un');
@@ -447,6 +448,7 @@ function ItemDrawer({
       .then((d) => {
         setDetalhe(d);
         setNome(d.nome);
+        setDescricao(d.descricao ?? '');
         setSetorId(d.categoria.setor?.id ?? setores[0]?.id ?? '');
         setCategoriaId(d.categoria.id);
         setUnidade(d.unidade);
@@ -467,12 +469,19 @@ function ItemDrawer({
       return;
     }
     setSalvando(true);
+    const d = descricao.trim();
     try {
       if (isNew) {
-        await api.criarItem({ nome: nome.trim(), categoriaId, unidade });
+        await api.criarItem({
+          nome: nome.trim(),
+          ...(d ? { descricao: d } : {}),
+          categoriaId,
+          unidade,
+        });
       } else {
         await api.atualizarItem(itemId!, {
           nome: nome.trim(),
+          descricao: d.length > 0 ? d : null,
           categoriaId,
           unidade,
         });
@@ -560,6 +569,39 @@ function ItemDrawer({
           placeholder="ex: Coca-Cola lata 350ml"
           autoFocus={isNew}
         />
+        <label style={{ display: 'block', fontFamily: T.font }}>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: T.ink2,
+              marginBottom: 6,
+              letterSpacing: -0.1,
+            }}
+          >
+            descrição <span style={{ color: T.ink3, fontWeight: 500 }}>(opcional)</span>
+          </div>
+          <textarea
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            placeholder="detalhes do item: marca, fornecedor, observações…"
+            maxLength={500}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              minHeight: 72,
+              padding: '10px 12px',
+              background: T.surface2,
+              border: `1px solid ${T.line}`,
+              borderRadius: 8,
+              fontFamily: T.font,
+              fontSize: 14,
+              color: T.ink,
+              outline: 'none',
+              resize: 'vertical',
+            }}
+          />
+        </label>
         <div
           style={{
             display: 'grid',

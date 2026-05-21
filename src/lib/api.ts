@@ -146,6 +146,7 @@ export interface CategoriaResumo {
 export interface Item {
   id: string;
   nome: string;
+  descricao: string | null;
   categoria: CategoriaResumo;
   unidade: string;
   ativo: boolean;
@@ -541,12 +542,18 @@ export const api = {
   itens: (categoriaId?: string, busca?: string) =>
     request<Paginado<Item>>(`/itens${qs({ categoriaId, busca, limit: 100 })}`),
   item: (id: string) => request<ItemDetalhe>(`/itens/${id}`),
-  criarItem: (body: { nome: string; categoriaId: string; unidade: string }) =>
+  criarItem: (body: {
+    nome: string;
+    descricao?: string;
+    categoriaId: string;
+    unidade: string;
+  }) =>
     request<Item>('/itens', { method: 'POST', body: JSON.stringify(body) }),
   atualizarItem: (
     id: string,
     body: {
       nome?: string;
+      descricao?: string | null;
       categoriaId?: string;
       unidade?: string;
       ativo?: boolean;
