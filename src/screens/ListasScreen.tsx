@@ -2,8 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { WT } from '@/lib/theme';
-import { api, type Item, type Lista } from '@/lib/api';
+import {
+  api,
+  type Fornecedor,
+  type Item,
+  type Lista,
+} from '@/lib/api';
 import { useApi } from '@/lib/useApi';
+import { downloadCsv, slugify, type Row } from '@/lib/csv';
 import {
   WButton,
   WCard,
@@ -23,10 +29,11 @@ export default function ListasScreen() {
     '/listas-contagem',
   );
   const { data: itensData } = useApi(() => api.itens(), []);
+  const { data: fornecedoresData } = useApi(() => api.fornecedores(), []);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<
-    null | 'nova' | 'renomear' | 'addItem'
+    null | 'nova' | 'renomear' | 'addItem' | 'exportar'
   >(null);
 
   const todasListas = listas ?? [];
@@ -227,6 +234,14 @@ export default function ListasScreen() {
                 <WButton
                   kind="neutral"
                   size="sm"
+                  icon="download"
+                  onClick={() => setDrawer('exportar')}
+                >
+                  exportar CSV
+                </WButton>
+                <WButton
+                  kind="neutral"
+                  size="sm"
                   icon="edit"
                   onClick={() => setDrawer('renomear')}
                 >
@@ -328,6 +343,13 @@ export default function ListasScreen() {
             setDrawer(null);
             salvarItens(ids);
           }}
+        />
+      )}
+      {drawer === 'exportar' && lista && (
+        <ExportarDrawer
+          lista={lista}
+          fornecedores={(fornecedoresData ?? []).filter((f) => f.ativo)}
+          onClose={() => setDrawer(null)}
         />
       )}
     </>
@@ -796,4 +818,276 @@ function AddItemDrawer({
       </div>
     </WDrawer>
   );
+}
+
+function ExportarDrawer({
+  lista,
+  fornecedores,
+  onClose,
+}: {
+  lista: Lista;
+  fornecedores: Fornecedor[];
+  onClose: () => void;
+}) {
+  const T = WT;
+  // Recarrega a lista pra garantir setor + fornecedores no payload.
+  const { data: completa } = useApi(
+    () => api.lista(lista.id),
+    [lista.id],
+    `/listas-contagem/${lista.id}`,
+  );
+  const [agrupar, setAgrupar] = useState(true);
+  const [fornecedorId, setFornecedorId] = useState<string>('todos');
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const itensCompletos = completa?.itens ?? [];
+
+  // Fornecedores que aparecem na lista (intersect com cadastro + ativos).
+  const fornDaLista = useMemo(() => {
+    const ids = new Set<string>();
+    for (const li of itensCompletos) {
+      for (const v of li.item.fornecedores ?? []) {
+        ids.add(v.fornecedor.id);
+      }
+    }
+    return fornecedores.filter((f) => ids.has(f.id));
+  }, [itensCompletos, fornecedores]);
+
+  function gerar() {
+    if (!completa) return;
+    const linhas = filtrar(completa, fornecedorId);
+    const rows: Row[] = agrupar
+      ? blocosAgrupados(linhas, fornecedorId, fornecedores)
+      : [CABECALHO, ...linhas.map((l) => formatarLinha(l, fornecedorId))];
+    const sufixo =
+      fornecedorId !== 'todos'
+        ? `-${slugify(nomeFornecedor(fornecedorId, fornecedores))}`
+        : agrupar
+        ? '-por-fornecedor'
+        : '';
+    downloadCsv(`compras-${slugify(lista.nome)}${sufixo}`, rows);
+    setFeedback('CSV baixado.');
+    window.setTimeout(() => setFeedback(null), 2400);
+  }
+
+  return (
+    <WDrawer
+      open
+      onClose={onClose}
+      title="exportar CSV"
+      subtitle={`lista de compras a partir de "${lista.nome}"`}
+      width={420}
+      footer={
+        <>
+          <div style={{ flex: 1 }} />
+          <WButton kind="neutral" size="md" onClick={onClose}>
+            fechar
+          </WButton>
+          <WButton
+            kind="primary"
+            size="md"
+            icon="download"
+            onClick={gerar}
+            disabled={!completa}
+          >
+            baixar CSV
+          </WButton>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 12px',
+            border: `1px solid ${T.line}`,
+            borderRadius: 9,
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 600,
+            color: T.ink,
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={agrupar}
+            onChange={(e) => setAgrupar(e.target.checked)}
+            style={{ accentColor: T.ink }}
+          />
+          agrupar por fornecedor (blocos separados)
+        </label>
+
+        <label style={{ display: 'block', fontFamily: T.font }}>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: T.ink2,
+              marginBottom: 6,
+            }}
+          >
+            filtrar por fornecedor
+          </div>
+          <select
+            value={fornecedorId}
+            onChange={(e) => setFornecedorId(e.target.value)}
+            style={{
+              width: '100%',
+              height: 38,
+              padding: '0 12px',
+              background: T.surface2,
+              border: `1px solid ${T.line}`,
+              borderRadius: 8,
+              fontFamily: T.font,
+              fontSize: 14,
+              color: T.ink,
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="todos">todos os fornecedores</option>
+            {fornDaLista.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nome}
+              </option>
+            ))}
+            <option value="__sem__">— sem fornecedor —</option>
+          </select>
+        </label>
+
+        <div
+          style={{
+            fontSize: 12,
+            color: T.ink3,
+            fontWeight: 500,
+            lineHeight: 1.5,
+          }}
+        >
+          o CSV inclui setor, categoria, item, unidade e a lista de
+          fornecedores (com destaque pro principal). usa BOM UTF-8 pra
+          acentos abrirem certos no Excel/Sheets.
+        </div>
+
+        {feedback && (
+          <div
+            style={{
+              padding: '10px 12px',
+              background: T.surface,
+              border: `1px solid ${T.line}`,
+              borderRadius: 8,
+              fontSize: 13,
+              color: T.ink2,
+              fontWeight: 600,
+            }}
+          >
+            {feedback}
+          </div>
+        )}
+      </div>
+    </WDrawer>
+  );
+}
+
+// ── Helpers de export ────────────────────────────────────────────────────
+
+const CABECALHO: Row = [
+  'setor',
+  'categoria',
+  'item',
+  'unidade',
+  'fornecedor principal',
+  'todos fornecedores',
+  'código',
+];
+
+type LinhaLista = Lista['itens'][number];
+
+function filtrar(lista: Lista, fornecedorId: string): LinhaLista[] {
+  if (fornecedorId === 'todos') return lista.itens;
+  if (fornecedorId === '__sem__') {
+    return lista.itens.filter(
+      (li) => !li.item.fornecedores || li.item.fornecedores.length === 0,
+    );
+  }
+  return lista.itens.filter((li) =>
+    (li.item.fornecedores ?? []).some(
+      (v) => v.fornecedor.id === fornecedorId,
+    ),
+  );
+}
+
+function principal(li: LinhaLista) {
+  return (li.item.fornecedores ?? []).find((v) => v.principal) ?? null;
+}
+
+function formatarLinha(li: LinhaLista, filtroFornId: string): Row {
+  const cat = li.item.categoria;
+  const setor = cat.setor?.nome ?? '';
+  const catNome = cat.parent ? `${cat.parent.nome} › ${cat.nome}` : cat.nome;
+  const p = principal(li);
+  const todos = (li.item.fornecedores ?? [])
+    .map((v) => v.fornecedor.nome)
+    .join('; ');
+  const codigo =
+    filtroFornId !== 'todos' && filtroFornId !== '__sem__'
+      ? (li.item.fornecedores ?? []).find(
+          (v) => v.fornecedor.id === filtroFornId,
+        )?.codigo ?? ''
+      : p?.codigo ?? '';
+  return [
+    setor,
+    catNome,
+    li.item.nome,
+    li.item.unidade,
+    p?.fornecedor.nome ?? '',
+    todos,
+    codigo ?? '',
+  ];
+}
+
+function blocosAgrupados(
+  itens: LinhaLista[],
+  filtroFornId: string,
+  fornecedores: Fornecedor[],
+): Row[] {
+  // Agrupa por fornecedor principal; itens sem principal vão num bloco final.
+  const grupos = new Map<string, LinhaLista[]>();
+  const SEM = '__sem_principal__';
+  for (const li of itens) {
+    const p = principal(li);
+    const k = p ? p.fornecedor.id : SEM;
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k)!.push(li);
+  }
+  const ordenado = Array.from(grupos.entries())
+    .filter(([k]) => k !== SEM)
+    .sort(([a], [b]) => {
+      const na = fornecedores.find((f) => f.id === a)?.nome ?? '';
+      const nb = fornecedores.find((f) => f.id === b)?.nome ?? '';
+      return na.localeCompare(nb);
+    });
+  const semBloco = grupos.get(SEM);
+  if (semBloco) ordenado.push([SEM, semBloco]);
+
+  const rows: Row[] = [];
+  for (const [k, lis] of ordenado) {
+    const nome =
+      k === SEM
+        ? 'sem fornecedor principal'
+        : fornecedores.find((f) => f.id === k)?.nome ?? '(removido)';
+    rows.push([`Fornecedor: ${nome}`]);
+    rows.push(CABECALHO);
+    for (const li of lis) {
+      rows.push(formatarLinha(li, filtroFornId));
+    }
+    rows.push([]); // separador em branco
+  }
+  return rows;
+}
+
+function nomeFornecedor(id: string, fornecedores: Fornecedor[]): string {
+  if (id === '__sem__') return 'sem-fornecedor';
+  return fornecedores.find((f) => f.id === id)?.nome ?? 'fornecedor';
 }

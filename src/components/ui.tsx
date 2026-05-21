@@ -803,8 +803,9 @@ export function WSegmented({
   return (
     <div
       style={{
-        display: 'inline-flex', background: WT.lineSoft, padding: 3,
-        borderRadius: 8, fontFamily: WT.font,
+        display: 'flex', flexWrap: 'wrap', rowGap: 3, columnGap: 0,
+        background: WT.lineSoft, padding: 3,
+        borderRadius: 8, fontFamily: WT.font, maxWidth: '100%',
       }}
     >
       {options.map((o) => {
@@ -816,13 +817,15 @@ export function WSegmented({
             key={v}
             onClick={() => onChange(v)}
             style={{
-              height: s.h - 6, padding: `0 ${s.px}px`, border: 'none',
+              minHeight: s.h - 6, padding: `0 ${s.px}px`, border: 'none',
               background: on ? WT.surface2 : 'transparent',
               color: on ? WT.ink : WT.ink2, fontFamily: WT.font,
               fontSize: s.fs, fontWeight: 600,
               borderRadius: 6, cursor: 'pointer',
               boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
               transition: 'background .12s, color .12s',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex', alignItems: 'center',
             }}
           >
             {l}

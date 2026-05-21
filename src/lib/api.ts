@@ -143,11 +143,36 @@ export interface CategoriaResumo {
   parent?: { id: string; nome: string } | null;
 }
 
+export interface FornecedorResumo {
+  id: string;
+  nome: string;
+  ativo?: boolean;
+}
+
+export interface Fornecedor extends FornecedorResumo {
+  estabelecimentoId: string;
+  contato: string | null;
+  telefone: string | null;
+  email: string | null;
+  observacoes: string | null;
+  ativo: boolean;
+  itens: number;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface ItemFornecedorLink {
+  principal: boolean;
+  codigo: string | null;
+  fornecedor: FornecedorResumo;
+}
+
 export interface Item {
   id: string;
   nome: string;
   descricao: string | null;
   categoria: CategoriaResumo;
+  fornecedores: ItemFornecedorLink[];
   unidade: string;
   ativo: boolean;
   criadoEm: string;
@@ -166,7 +191,13 @@ export interface Lista {
   totalItens: number;
   itens: {
     ordem: number;
-    item: { id: string; nome: string; categoria: CategoriaResumo; unidade: string };
+    item: {
+      id: string;
+      nome: string;
+      categoria: CategoriaResumo;
+      unidade: string;
+      fornecedores?: ItemFornecedorLink[];
+    };
   }[];
   criadoEm: string;
 }
@@ -538,6 +569,35 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  // fornecedores (cadastro por estabelecimento; ligado a itens via M:N)
+  fornecedores: () => request<Fornecedor[]>('/fornecedores'),
+  criarFornecedor: (body: {
+    nome: string;
+    contato?: string;
+    telefone?: string;
+    email?: string;
+    observacoes?: string;
+  }) =>
+    request<Fornecedor>('/fornecedores', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  atualizarFornecedor: (
+    id: string,
+    body: {
+      nome?: string;
+      contato?: string | null;
+      telefone?: string | null;
+      email?: string | null;
+      observacoes?: string | null;
+      ativo?: boolean;
+    },
+  ) =>
+    request<Fornecedor>(`/fornecedores/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
   // itens
   itens: (categoriaId?: string, busca?: string) =>
     request<Paginado<Item>>(`/itens${qs({ categoriaId, busca, limit: 100 })}`),
@@ -547,6 +607,11 @@ export const api = {
     descricao?: string;
     categoriaId: string;
     unidade: string;
+    fornecedores?: {
+      fornecedorId: string;
+      principal?: boolean;
+      codigo?: string;
+    }[];
   }) =>
     request<Item>('/itens', { method: 'POST', body: JSON.stringify(body) }),
   atualizarItem: (
@@ -557,6 +622,11 @@ export const api = {
       categoriaId?: string;
       unidade?: string;
       ativo?: boolean;
+      fornecedores?: {
+        fornecedorId: string;
+        principal?: boolean;
+        codigo?: string;
+      }[];
     },
   ) =>
     request<Item>(`/itens/${id}`, {

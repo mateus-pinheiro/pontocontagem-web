@@ -6,6 +6,7 @@ import {
   api,
   type Categoria,
   type CorCategoria,
+  type Fornecedor,
   type ItemDetalhe,
   type Setor,
 } from '@/lib/api';
@@ -70,6 +71,7 @@ export default function ItensScreen() {
     () => api.setores(),
     [],
   );
+  const { data: fornecedores } = useApi(() => api.fornecedores(), []);
 
   const itens = data?.dados ?? [];
   const cats = categorias ?? [];
@@ -92,16 +94,20 @@ export default function ItensScreen() {
       ? catsAtivas
       : catsAtivas.filter((c) => c.setorId === setorId);
 
+  // Categoria-raiz selecionada também conta os itens das subcategorias filhas.
+  const casaCategoria = (i: (typeof itens)[number], id: string) =>
+    i.categoria.id === id || i.categoria.parent?.id === id;
+
   const list = itens.filter((i) => {
     if (setorId !== 'todos' && i.categoria.setor?.id !== setorId) return false;
-    if (catId !== 'todas' && i.categoria.id !== catId) return false;
+    if (catId !== 'todas' && !casaCategoria(i, catId)) return false;
     if (search && !i.nome.toLowerCase().includes(search.toLowerCase()))
       return false;
     return true;
   });
 
   const byCat = (id: string) =>
-    itens.filter((i) => i.categoria.id === id).length;
+    itens.filter((i) => casaCategoria(i, id)).length;
   const bySetor = (id: string) =>
     itens.filter((i) => i.categoria.setor?.id === id).length;
 
@@ -369,6 +375,7 @@ export default function ItensScreen() {
           itemId={drawer.itemId}
           setores={setoresAtivos}
           categorias={catsAtivas}
+          fornecedores={(fornecedores ?? []).filter((f) => f.ativo)}
           onClose={() => setDrawer(null)}
           onSaved={() => {
             setDrawer(null);
@@ -403,16 +410,20 @@ function rotuloCategoria(c: { nome: string; parent?: { nome: string } | null }) 
   return c.parent ? `${c.parent.nome} › ${c.nome}` : c.nome;
 }
 
+type VinculoForn = { fornecedorId: string; principal: boolean; codigo: string };
+
 function ItemDrawer({
   itemId,
   setores,
   categorias,
+  fornecedores,
   onClose,
   onSaved,
 }: {
   itemId: string | null;
   setores: Setor[];
   categorias: Categoria[];
+  fornecedores: Fornecedor[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -424,6 +435,7 @@ function ItemDrawer({
   const [setorId, setSetorId] = useState<string>(setores[0]?.id ?? '');
   const [categoriaId, setCategoriaId] = useState<string>('');
   const [unidade, setUnidade] = useState('un');
+  const [vinculos, setVinculos] = useState<VinculoForn[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -452,6 +464,13 @@ function ItemDrawer({
         setSetorId(d.categoria.setor?.id ?? setores[0]?.id ?? '');
         setCategoriaId(d.categoria.id);
         setUnidade(d.unidade);
+        setVinculos(
+          (d.fornecedores ?? []).map((v) => ({
+            fornecedorId: v.fornecedor.id,
+            principal: v.principal,
+            codigo: v.codigo ?? '',
+          })),
+        );
       })
       .catch((e) =>
         setErro(e instanceof Error ? e.message : 'erro ao carregar'),
@@ -470,6 +489,11 @@ function ItemDrawer({
     }
     setSalvando(true);
     const d = descricao.trim();
+    const fornPayload = vinculos.map((v) => ({
+      fornecedorId: v.fornecedorId,
+      principal: v.principal,
+      ...(v.codigo.trim() ? { codigo: v.codigo.trim() } : {}),
+    }));
     try {
       if (isNew) {
         await api.criarItem({
@@ -477,6 +501,7 @@ function ItemDrawer({
           ...(d ? { descricao: d } : {}),
           categoriaId,
           unidade,
+          ...(fornPayload.length > 0 ? { fornecedores: fornPayload } : {}),
         });
       } else {
         await api.atualizarItem(itemId!, {
@@ -484,6 +509,7 @@ function ItemDrawer({
           descricao: d.length > 0 ? d : null,
           categoriaId,
           unidade,
+          fornecedores: fornPayload,
         });
       }
       onSaved();
@@ -492,6 +518,32 @@ function ItemDrawer({
       setSalvando(false);
     }
   }
+
+  function addFornecedor(id: string) {
+    if (vinculos.some((v) => v.fornecedorId === id)) return;
+    setVinculos((cur) => [
+      ...cur,
+      { fornecedorId: id, principal: cur.length === 0, codigo: '' },
+    ]);
+  }
+  function removeFornecedor(id: string) {
+    setVinculos((cur) => cur.filter((v) => v.fornecedorId !== id));
+  }
+  function marcarPrincipal(id: string) {
+    setVinculos((cur) =>
+      cur.map((v) => ({ ...v, principal: v.fornecedorId === id })),
+    );
+  }
+  function setCodigo(id: string, codigo: string) {
+    setVinculos((cur) =>
+      cur.map((v) => (v.fornecedorId === id ? { ...v, codigo } : v)),
+    );
+  }
+  const disponiveis = fornecedores.filter(
+    (f) => !vinculos.some((v) => v.fornecedorId === f.id),
+  );
+  const nomeForn = (id: string) =>
+    fornecedores.find((f) => f.id === id)?.nome ?? '(removido)';
 
   async function desativar() {
     if (isNew) return;
@@ -641,6 +693,165 @@ function ItemDrawer({
             { value: 'ml', label: 'mililitros (ml)' },
           ]}
         />
+
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 8,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: T.ink2,
+                letterSpacing: -0.1,
+              }}
+            >
+              fornecedores{' '}
+              <span style={{ color: T.ink3, fontWeight: 500 }}>(opcional)</span>
+            </div>
+            {disponiveis.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => e.target.value && addFornecedor(e.target.value)}
+                style={{
+                  height: 28,
+                  padding: '0 8px',
+                  background: T.surface2,
+                  border: `1px solid ${T.line}`,
+                  borderRadius: 8,
+                  fontFamily: T.font,
+                  fontSize: 12,
+                  color: T.ink2,
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="">+ adicionar fornecedor</option>
+                {disponiveis.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.nome}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          {vinculos.length === 0 ? (
+            <div
+              style={{
+                fontSize: 13,
+                color: T.ink3,
+                fontWeight: 500,
+                padding: '10px 12px',
+                border: `1px dashed ${T.line}`,
+                borderRadius: 9,
+              }}
+            >
+              {fornecedores.length === 0
+                ? 'cadastre fornecedores em /fornecedores pra atrelar aqui.'
+                : 'nenhum fornecedor vinculado a este item.'}
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              {vinculos.map((v) => (
+                <div
+                  key={v.fornecedorId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 10px',
+                    border: `1px solid ${
+                      v.principal ? T.ink : T.line
+                    }`,
+                    background: v.principal ? T.surface : T.surface2,
+                    borderRadius: 9,
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: T.ink,
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name={`principal-${itemId ?? 'novo'}`}
+                      checked={v.principal}
+                      onChange={() => marcarPrincipal(v.fornecedorId)}
+                      style={{ accentColor: T.ink }}
+                    />
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {nomeForn(v.fornecedorId)}
+                    </span>
+                    {v.principal && (
+                      <WTag tone="terra" size="xs">
+                        principal
+                      </WTag>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    value={v.codigo}
+                    onChange={(e) => setCodigo(v.fornecedorId, e.target.value)}
+                    placeholder="código"
+                    style={{
+                      width: 110,
+                      height: 28,
+                      padding: '0 8px',
+                      background: T.surface2,
+                      border: `1px solid ${T.line}`,
+                      borderRadius: 6,
+                      fontFamily: T.fontMono,
+                      fontSize: 12,
+                      color: T.ink,
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={() => removeFornecedor(v.fornecedorId)}
+                    title="remover"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 6,
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <WIcon name="close" size={14} color={T.ink3} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {!isNew && i && (
           <>

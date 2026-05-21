@@ -33,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'membros', label: 'membros', icon: 'people', href: '/membros', perm: 'USUARIO_GERENCIAR' },
   { id: 'setores', label: 'setores', icon: 'box', href: '/setores', perm: 'ITEM_GERENCIAR' },
   { id: 'itens', label: 'itens', icon: 'box', href: '/itens', perm: 'ITEM_GERENCIAR' },
+  { id: 'fornecedores', label: 'fornecedores', icon: 'people', href: '/fornecedores', perm: 'ITEM_GERENCIAR' },
   { id: 'listas', label: 'listas de contagem', icon: 'list', href: '/listas', perm: 'LISTA_GERENCIAR' },
   { id: 'relatorios', label: 'relatórios', icon: 'chart', href: '/relatorios', perm: 'RELATORIO_VER' },
 ];
