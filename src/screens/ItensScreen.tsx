@@ -52,7 +52,6 @@ export default function ItensScreen() {
   const T = WT;
   const { search } = useSearch();
   const [setorId, setSetorId] = useState<'todos' | string>('todos');
-  const [catId, setCatId] = useState<'todas' | string>('todas');
   const [drawer, setDrawer] = useState<DrawerState>(null);
   const [pulseNova, setPulseNova] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -79,35 +78,13 @@ export default function ItensScreen() {
   const setoresAtivos = setoresAll.filter((s) => s.ativo);
   const catsAtivas = cats.filter((c) => c.ativo);
 
-  // Quando o setor muda, descarta filtro de categoria que não pertença a ele.
-  useEffect(() => {
-    if (catId === 'todas') return;
-    const c = cats.find((x) => x.id === catId);
-    if (!c) return;
-    if (setorId !== 'todos' && c.setorId !== setorId) {
-      setCatId('todas');
-    }
-  }, [setorId, catId, cats]);
-
-  const catsDoSetor =
-    setorId === 'todos'
-      ? catsAtivas
-      : catsAtivas.filter((c) => c.setorId === setorId);
-
-  // Categoria-raiz selecionada também conta os itens das subcategorias filhas.
-  const casaCategoria = (i: (typeof itens)[number], id: string) =>
-    i.categoria.id === id || i.categoria.parent?.id === id;
-
   const list = itens.filter((i) => {
     if (setorId !== 'todos' && i.categoria.setor?.id !== setorId) return false;
-    if (catId !== 'todas' && !casaCategoria(i, catId)) return false;
     if (search && !i.nome.toLowerCase().includes(search.toLowerCase()))
       return false;
     return true;
   });
 
-  const byCat = (id: string) =>
-    itens.filter((i) => casaCategoria(i, id)).length;
   const bySetor = (id: string) =>
     itens.filter((i) => i.categoria.setor?.id === id).length;
 
@@ -197,24 +174,6 @@ export default function ItensScreen() {
         />
       </WToolbar>
 
-      {catsDoSetor.length > 0 && (
-        <WToolbar>
-          <WSegmented
-            value={catId}
-            onChange={(v) => setCatId(v as 'todas' | string)}
-            options={[
-              {
-                value: 'todas',
-                label: `todas (${list.length})`,
-              },
-              ...catsDoSetor.map((c) => ({
-                value: c.id,
-                label: `${c.parent ? `${c.parent.nome} › ${c.nome}` : c.nome} (${byCat(c.id)})`,
-              })),
-            ]}
-          />
-        </WToolbar>
-      )}
 
       {aviso && (
         <div style={{ padding: '0 32px 12px' }}>
