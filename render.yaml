@@ -34,3 +34,14 @@ services:
       # Definida no painel do Render (não versionada). Ex.: https://sua-api.vercel.app/api
       - key: NEXT_PUBLIC_API_URL
         sync: false
+      # Firebase Remote Config (feature flags) — app web do projeto
+      # pontocontagem-eb570. NEXT_PUBLIC_* é inlinado no BUILD: mudar estes
+      # valores exige redeploy; mudar a FLAG no console, não.
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        sync: false

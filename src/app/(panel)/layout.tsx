@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { useFlags } from '@/lib/flags';
 import { api } from '@/lib/api';
 import { PageShell } from '@/components/shell';
 import { WLoading } from '@/components/ui';
@@ -13,6 +14,7 @@ export default function PanelLayout({
   children: React.ReactNode;
 }) {
   const { usuario, pronto } = useAuth();
+  const { ponto, pronto: flagsProntas } = useFlags();
   const router = useRouter();
   const [alerts, setAlerts] = useState<Record<string, number>>({});
 
@@ -24,19 +26,21 @@ export default function PanelLayout({
     if (!usuario) return;
     api
       .alertasResumo()
-      .then(({ ponto, contagem, sync }) => {
-        // mesma derivação de antes: badge "pontos" = ponto + sync
-        // (tudo que não é contagem); "dashboard" = total.
+      .then(({ ponto: p, contagem: c, sync: s }) => {
+        // badge "pontos" = ponto + sync (tudo que não é contagem);
+        // "dashboard" = total. Com o ponto desligado, só contagem conta.
         setAlerts({
-          dashboard: ponto + contagem + sync || undefined,
-          pontos: ponto + sync || undefined,
-          contagens: contagem || undefined,
+          dashboard: (ponto ? p + c + s : c) || undefined,
+          ...(ponto ? { pontos: p + s || undefined } : {}),
+          contagens: c || undefined,
         } as Record<string, number>);
       })
       .catch(() => setAlerts({}));
-  }, [usuario]);
+  }, [usuario, ponto]);
 
-  if (!pronto || !usuario) {
+  // Espera as flags junto com a sessão: sem isso o painel pinta sem "pontos" e
+  // depois ganha o item quando a flag resolve.
+  if (!pronto || !flagsProntas || !usuario) {
     return (
       <div
         style={{

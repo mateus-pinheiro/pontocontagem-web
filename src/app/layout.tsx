@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth';
+import { FlagsProvider } from '@/lib/flags';
 import { W_KEYFRAMES } from '@/lib/theme';
 
 export const metadata: Metadata = {
@@ -40,7 +41,11 @@ export default function RootLayout({
         <style dangerouslySetInnerHTML={{ __html: W_KEYFRAMES }} />
       </head>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        {/* FlagsProvider por fora: o fetch do Remote Config começa no primeiro
+            paint, em paralelo com a leitura do localStorage do AuthProvider. */}
+        <FlagsProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </FlagsProvider>
       </body>
     </html>
   );

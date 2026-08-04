@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { WT } from '@/lib/theme';
 import { api, type Dashboard } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
+import { useFlag } from '@/lib/flags';
 import { fmtDataLonga } from '@/lib/format';
 import {
   WAvatar,
@@ -20,11 +21,20 @@ import {
 export default function DashboardScreen() {
   const T = WT;
   const router = useRouter();
+  const ponto = useFlag('ponto');
   const { data, loading, erro, reload } = useApi<Dashboard>(
     () => api.dashboard(),
     [],
     '/dashboard',
   );
+
+  // Com o ponto desligado o painel mostra só o que é de contagem — inclusive
+  // nos alertas, que o backend devolve misturados (ponto | contagem | sync).
+  const alertas = !data
+    ? []
+    : ponto
+      ? data.alertas
+      : data.alertas.filter((a) => a.tipo === 'contagem');
 
   const usuarioLocal =
     typeof window !== 'undefined'
@@ -66,29 +76,33 @@ export default function DashboardScreen() {
 
       {data && (
         <div style={{ padding: '0 32px 32px' }}>
-          {/* Stat row */}
+          {/* Stat row — sem ponto, sobram 2 cards ocupando a linha inteira. */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: `repeat(${ponto ? 4 : 2}, 1fr)`,
               gap: 14,
               marginBottom: 18,
             }}
           >
-            <WStat
-              icon="people"
-              accent="green"
-              label="trabalhando agora"
-              value={data.stats.trabalhandoAgora}
-              sub={`de ${data.stats.ativosHoje} ativos hoje`}
-            />
-            <WStat
-              icon="pause"
-              accent="amber"
-              label="em pausa"
-              value={data.stats.emPausa}
-              sub={data.stats.emPausaResumo || '—'}
-            />
+            {ponto && (
+              <>
+                <WStat
+                  icon="people"
+                  accent="green"
+                  label="trabalhando agora"
+                  value={data.stats.trabalhandoAgora}
+                  sub={`de ${data.stats.ativosHoje} ativos hoje`}
+                />
+                <WStat
+                  icon="pause"
+                  accent="amber"
+                  label="em pausa"
+                  value={data.stats.emPausa}
+                  sub={data.stats.emPausaResumo || '—'}
+                />
+              </>
+            )}
             <WStat
               icon="clipboard"
               accent="terra"
@@ -96,16 +110,22 @@ export default function DashboardScreen() {
               value={data.stats.contagensAndamento}
               sub={data.stats.contagensResumo}
             />
+            {/* `precisamAtencao` soma os dois domínios: com ponto off, contar
+                pelos alertas filtrados pra não mentir o número. */}
             <WStat
               icon="warn"
               accent="amber"
               label="precisam de atenção"
-              value={data.stats.precisamAtencao}
-              sub={`${
-                data.alertas.filter((a) => a.tipo !== 'contagem').length
-              } pontos · ${
-                data.alertas.filter((a) => a.tipo === 'contagem').length
-              } contagem`}
+              value={ponto ? data.stats.precisamAtencao : alertas.length}
+              sub={
+                ponto
+                  ? `${
+                      data.alertas.filter((a) => a.tipo !== 'contagem').length
+                    } pontos · ${
+                      data.alertas.filter((a) => a.tipo === 'contagem').length
+                    } contagem`
+                  : `${alertas.length} contagem`
+              }
             />
           </div>
 
@@ -125,7 +145,10 @@ export default function DashboardScreen() {
                 gap: 18,
               }}
             >
-              {/* Trabalhando agora */}
+              {/* Trabalhando agora — some junto com a flag de ponto.
+                  (bloco mantido com a indentação original de propósito: o
+                  wrapper é só a linha do `ponto &&`, fica fácil de reverter) */}
+              {ponto && (
               <WCard padding={0}>
                 <div
                   style={{
@@ -259,6 +282,7 @@ export default function DashboardScreen() {
                   ))}
                 </div>
               </WCard>
+              )}
 
               {/* Contagens de hoje */}
               <WCard padding={0}>
@@ -495,11 +519,11 @@ export default function DashboardScreen() {
                     precisam de atenção
                   </div>
                   <WTag tone="amber" size="xs">
-                    {data.alertas.length}
+                    {alertas.length}
                   </WTag>
                 </div>
                 <div>
-                  {data.alertas.length === 0 && (
+                  {alertas.length === 0 && (
                     <div
                       style={{
                         padding: '16px 20px',
@@ -511,13 +535,13 @@ export default function DashboardScreen() {
                       tudo certo por aqui. nada pendente.
                     </div>
                   )}
-                  {data.alertas.map((a, i) => (
+                  {alertas.map((a, i) => (
                     <div
                       key={a.id}
                       style={{
                         padding: '12px 20px',
                         borderBottom:
-                          i < data.alertas.length - 1
+                          i < alertas.length - 1
                             ? `1px solid ${T.lineSoft}`
                             : 'none',
                         display: 'flex',
@@ -607,7 +631,8 @@ export default function DashboardScreen() {
                 </div>
               </WCard>
 
-              {/* Mini chart */}
+              {/* Mini chart de horas — ponto (mesmo esquema do card acima) */}
+              {ponto && (
               <WCard padding={0}>
                 <div style={{ padding: '16px 20px 8px' }}>
                   <div
@@ -661,6 +686,7 @@ export default function DashboardScreen() {
                   </button>
                 </div>
               </WCard>
+              )}
             </div>
           </div>
         </div>

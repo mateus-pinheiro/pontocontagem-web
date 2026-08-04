@@ -12,6 +12,7 @@ import React, {
 import { usePathname, useRouter } from 'next/navigation';
 import { WT } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
+import { useFlags, type FlagKey } from '@/lib/flags';
 import { fmtDataLonga } from '@/lib/format';
 import type { Permissao } from '@/lib/api';
 import { WAvatar, WIcon, WInput } from './ui';
@@ -24,11 +25,13 @@ export interface NavItem {
   href: string;
   /** Se definido, o item só aparece para quem tem a permissão. */
   perm?: Permissao;
+  /** Se definido, o item só aparece com a feature flag ligada. */
+  flag?: FlagKey;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'painel', icon: 'dashboard', href: '/', perm: 'DASHBOARD_VER' },
-  { id: 'pontos', label: 'pontos', icon: 'clock', href: '/pontos', perm: 'PONTO_CORRIGIR' },
+  { id: 'pontos', label: 'pontos', icon: 'clock', href: '/pontos', perm: 'PONTO_CORRIGIR', flag: 'ponto' },
   { id: 'contagens', label: 'contagens', icon: 'clipboard', href: '/contagens', perm: 'CONTAGEM_CRIAR' },
   { id: 'membros', label: 'membros', icon: 'people', href: '/membros', perm: 'USUARIO_GERENCIAR' },
   { id: 'setores', label: 'setores', icon: 'box', href: '/setores', perm: 'ITEM_GERENCIAR' },
@@ -111,7 +114,10 @@ function Sidebar({
   alerts?: Record<string, number>;
 }) {
   const { usuario, sair, pode } = useAuth();
+  const flags = useFlags();
   const [menu, setMenu] = useState(false);
+  const visivel = (i: NavItem) =>
+    (!i.perm || pode(i.perm)) && (!i.flag || flags[i.flag]);
   return (
     <aside
       style={{
@@ -158,7 +164,7 @@ function Sidebar({
       </div>
 
       <div style={{ padding: '6px 10px 0', flex: 1, overflowY: 'auto' }}>
-        {NAV_ITEMS.filter((i) => !i.perm || pode(i.perm)).map((item) => (
+        {NAV_ITEMS.filter(visivel).map((item) => (
           <SidebarItem
             key={item.id}
             item={item}
@@ -172,7 +178,7 @@ function Sidebar({
             height: 1, background: WT.line, margin: '12px 8px',
           }}
         />
-        {NAV_SECONDARY.filter((i) => !i.perm || pode(i.perm)).map((item) => (
+        {NAV_SECONDARY.filter(visivel).map((item) => (
           <SidebarItem
             key={item.id}
             item={item}

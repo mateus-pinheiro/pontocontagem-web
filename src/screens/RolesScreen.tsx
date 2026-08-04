@@ -10,6 +10,7 @@ import {
   type Role,
 } from '@/lib/api';
 import { labelRole } from '@/lib/format';
+import { useFlag } from '@/lib/flags';
 import {
   WButton,
   WDrawer,
@@ -235,6 +236,7 @@ function DrawerRole({
 }) {
   const novo = modo.tipo === 'novo';
   const editar = modo.tipo === 'editar' ? modo.role : null;
+  const ponto = useFlag('ponto');
 
   const [nome, setNome] = useState('');
   const [perms, setPerms] = useState<Permissao[]>([]);
@@ -270,7 +272,12 @@ function DrawerRole({
     }
   }
 
-  const cat = catalogo.length ? catalogo : TODAS_PERMISSOES;
+  // Com o ponto desligado as permissões de ponto somem do catálogo. Não
+  // apagam nada: `perms` é semeado do role existente (acima), então editar
+  // uma função que já tem PONTO_* preserva essas permissões no salvar.
+  const cat = (catalogo.length ? catalogo : TODAS_PERMISSOES).filter(
+    (p) => ponto || !p.startsWith('PONTO_'),
+  );
 
   return (
     <WDrawer

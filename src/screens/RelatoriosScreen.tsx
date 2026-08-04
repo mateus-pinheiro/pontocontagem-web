@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { WT } from '@/lib/theme';
 import { api } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
+import { useFlag } from '@/lib/flags';
 import { fmtNum, fmtQtd } from '@/lib/format';
 import {
   WAvatar,
@@ -19,6 +20,7 @@ import {
 
 export default function RelatoriosScreen() {
   const T = WT;
+  const ponto = useFlag('ponto');
   const [period, setPeriod] = useState('semana');
   const { data, loading, erro, reload } = useApi(
     () => api.relatorios(period),
@@ -35,7 +37,11 @@ export default function RelatoriosScreen() {
       <WPageHeader
         breadcrumb="análise"
         title="relatórios"
-        subtitle="horas trabalhadas, estoque atual e tendências"
+        subtitle={
+          ponto
+            ? 'horas trabalhadas, estoque atual e tendências'
+            : 'estoque atual e tendências'
+        }
         actions={
           <>
             <WSelect
@@ -72,34 +78,40 @@ export default function RelatoriosScreen() {
             gap: 18,
           }}
         >
+          {/* Sem ponto sobra só "contagens fechadas" — meia largura pra não
+              virar um card gigante sozinho na linha. */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: `repeat(${ponto ? 4 : 2}, 1fr)`,
               gap: 14,
             }}
           >
-            <WStat
-              icon="clock"
-              accent="green"
-              label="horas totais"
-              value={`${fmtNum(data.stats.horasTotais)}h`}
-              sub={`${data.stats.funcionariosAtivos} funcionários`}
-            />
-            <WStat
-              icon="people"
-              accent="blue"
-              label="dias trabalhados"
-              value={data.stats.diasTrabalhados}
-              sub="soma de todos"
-            />
-            <WStat
-              icon="pause"
-              accent="amber"
-              label="horas em pausa"
-              value={`${fmtNum(data.stats.horasPausa)}h`}
-              sub={`${data.stats.pctPausa}% do total`}
-            />
+            {ponto && (
+              <>
+                <WStat
+                  icon="clock"
+                  accent="green"
+                  label="horas totais"
+                  value={`${fmtNum(data.stats.horasTotais)}h`}
+                  sub={`${data.stats.funcionariosAtivos} funcionários`}
+                />
+                <WStat
+                  icon="people"
+                  accent="blue"
+                  label="dias trabalhados"
+                  value={data.stats.diasTrabalhados}
+                  sub="soma de todos"
+                />
+                <WStat
+                  icon="pause"
+                  accent="amber"
+                  label="horas em pausa"
+                  value={`${fmtNum(data.stats.horasPausa)}h`}
+                  sub={`${data.stats.pctPausa}% do total`}
+                />
+              </>
+            )}
             <WStat
               icon="clipboard"
               accent="terra"
@@ -109,7 +121,8 @@ export default function RelatoriosScreen() {
             />
           </div>
 
-          {/* Horas por funcionário */}
+          {/* Horas por funcionário — ponto */}
+          {ponto && (
           <WCard padding={0}>
             <div
               style={{
@@ -284,6 +297,7 @@ export default function RelatoriosScreen() {
               </div>
             </div>
           </WCard>
+          )}
 
           {/* Estoque atual */}
           <WCard padding={0}>
