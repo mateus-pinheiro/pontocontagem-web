@@ -176,7 +176,7 @@ export default function ItensScreen() {
 
 
       {aviso && (
-        <div style={{ padding: '0 32px 12px' }}>
+        <div className="w-page-tight">
           <div
             style={{
               padding: '10px 14px',
@@ -201,7 +201,7 @@ export default function ItensScreen() {
       {erro && <WErro mensagem={erro} onRetry={reloadItens} />}
 
       {data && (
-        <div style={{ padding: '0 32px 32px' }}>
+        <div className="w-page">
           <WCard padding={0}>
             <WTable>
               <thead>
@@ -613,13 +613,7 @@ function ItemDrawer({
             }}
           />
         </label>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 12,
-          }}
-        >
+        <div className="w-grid-2">
           <WSelect
             label="setor"
             value={setorId}

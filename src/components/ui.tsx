@@ -16,7 +16,7 @@ type IconName =
   | 'trash' | 'download' | 'upload' | 'moreH' | 'moreV' | 'grip' | 'arrowLeft'
   | 'arrowRight' | 'arrowUp' | 'arrowDown' | 'warn' | 'info' | 'enter' | 'exit'
   | 'pause' | 'play' | 'eye' | 'eyeOff' | 'calendar' | 'bell' | 'settings'
-  | 'refresh' | 'key' | 'dot' | 'cloud';
+  | 'refresh' | 'key' | 'dot' | 'cloud' | 'menu';
 
 export function WIcon({
   name,
@@ -82,6 +82,7 @@ export function WIcon({
     refresh: <g {...c}><path d="M21 4v6h-6"/><path d="M3 20v-6h6"/><path d="M3 14a9 9 0 0 0 14.5 4.5L21 14M21 10A9 9 0 0 0 6.5 5.5L3 10"/></g>,
     key: <g {...c}><circle cx="7" cy="15" r="3"/><path d="M9.3 12.7L20 2l3 3-2 2-2-2-2 2-2-2-3 3z"/></g>,
     dot: <circle cx="12" cy="12" r="3" fill={color} stroke="none"/>,
+    menu: <path d="M4 7h16M4 12h16M4 17h16" {...c}/>,
   };
   return (
     <svg viewBox="0 0 24 24" style={s} aria-hidden="true">
@@ -481,7 +482,10 @@ export function WDrawer({
       />
       <div
         style={{
-          position: 'absolute', top: 0, right: 0, bottom: 0, width,
+          position: 'absolute', top: 0, right: 0, bottom: 0,
+          // em tela estreita a gaveta ocupa quase tudo, mas deixa uma
+          // faixa do overlay clicável pra fechar
+          width: `min(${width}px, calc(100vw - 32px))`,
           background: WT.bg, borderLeft: `1px solid ${WT.line}`,
           boxShadow: '-12px 0 32px rgba(0,0,0,0.08)',
           display: 'flex', flexDirection: 'column',
@@ -562,10 +566,8 @@ export function WPageHeader({
 }) {
   return (
     <div
-      style={{
-        padding: '24px 32px 18px', display: 'flex',
-        alignItems: 'flex-end', gap: 16, fontFamily: WT.font,
-      }}
+      className="w-header"
+      style={{ display: 'flex', gap: 16, fontFamily: WT.font }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         {breadcrumb && (
@@ -581,7 +583,7 @@ export function WPageHeader({
         )}
         <h1
           style={{
-            fontSize: 26, fontWeight: 600, margin: 0,
+            fontSize: 'clamp(20px, 4.5vw, 26px)', fontWeight: 600, margin: 0,
             letterSpacing: -0.6, color: WT.ink, lineHeight: 1.15,
           }}
         >
@@ -598,7 +600,10 @@ export function WPageHeader({
         )}
       </div>
       {actions && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div
+          className="w-header-actions"
+          style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+        >
           {actions}
         </div>
       )}
@@ -659,7 +664,8 @@ export function WStat({
         </div>
         <div
           style={{
-            fontSize: 28, fontWeight: 600, color: WT.ink, marginTop: 4,
+            fontSize: 'clamp(22px, 5vw, 28px)', fontWeight: 600,
+            color: WT.ink, marginTop: 4,
             letterSpacing: -0.8, fontVariantNumeric: 'tabular-nums',
             lineHeight: 1.05,
           }}
@@ -708,15 +714,19 @@ export function WTable({
   children: React.ReactNode;
   style?: CSS;
 }) {
+  // O wrapper deixa a tabela rolar na horizontal em telas estreitas em vez
+  // de espremer as colunas (min-width vem do CSS, só no breakpoint).
   return (
-    <table
-      style={{
-        width: '100%', borderCollapse: 'separate', borderSpacing: 0,
-        fontFamily: WT.font, fontSize: 14, ...style,
-      }}
-    >
-      {children}
-    </table>
+    <div className="w-tablewrap">
+      <table
+        style={{
+          width: '100%', borderCollapse: 'separate', borderSpacing: 0,
+          fontFamily: WT.font, fontSize: 14, ...style,
+        }}
+      >
+        {children}
+      </table>
+    </div>
   );
 }
 export function WTh({
@@ -893,8 +903,9 @@ export function WToolbar({
 }) {
   return (
     <div
+      className="w-toolbar"
       style={{
-        padding: '0 32px 14px', display: 'flex', alignItems: 'center',
+        display: 'flex', alignItems: 'center',
         gap: 10, fontFamily: WT.font, ...style,
       }}
     >
@@ -925,12 +936,12 @@ export function WErro({
   onRetry?: () => void;
 }) {
   return (
-    <div style={{ padding: '0 32px 32px' }}>
+    <div className="w-page">
       <WCard>
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: 12,
-            color: WT.danger,
+            flexWrap: 'wrap', color: WT.danger,
           }}
         >
           <WIcon name="warn" size={20} color={WT.danger} />

@@ -71,8 +71,8 @@ export default function RelatoriosScreen() {
 
       {data && (
         <div
+          className="w-page"
           style={{
-            padding: '0 32px 32px',
             display: 'flex',
             flexDirection: 'column',
             gap: 18,
@@ -80,13 +80,7 @@ export default function RelatoriosScreen() {
         >
           {/* Sem ponto sobra só "contagens fechadas" — meia largura pra não
               virar um card gigante sozinho na linha. */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${ponto ? 4 : 2}, 1fr)`,
-              gap: 14,
-            }}
-          >
+          <div className="w-grid-stats">
             {ponto && (
               <>
                 <WStat
@@ -171,11 +165,8 @@ export default function RelatoriosScreen() {
               {data.porFuncionario.map((r) => (
                 <div
                   key={r.id}
+                  className="w-grid-func"
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: '200px 1fr 120px 90px',
-                    gap: 14,
-                    alignItems: 'center',
                     padding: '10px 0',
                     borderBottom: `1px solid ${T.lineSoft}`,
                   }}
@@ -333,12 +324,8 @@ export default function RelatoriosScreen() {
               </div>
             </div>
             <div
-              style={{
-                padding: 16,
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 10,
-              }}
+              className="w-grid-3"
+              style={{ padding: 16, gap: 10 }}
             >
               {data.estoqueAtual.length === 0 && (
                 <div

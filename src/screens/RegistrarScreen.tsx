@@ -62,23 +62,13 @@ export default function RegistrarScreen() {
   }
 
   return (
-    <div
-      style={{
-        height: '100%',
-        width: '100%',
-        background: T.bg,
-        display: 'flex',
-        alignItems: 'stretch',
-        fontFamily: T.font,
-      }}
-    >
+    <div className="w-auth" style={{ background: T.bg, fontFamily: T.font }}>
       {/* Left — brand panel */}
       <div
+        className="w-auth-brand"
         style={{
-          flex: '0 0 46%',
           background: T.ink,
           color: '#fff',
-          padding: '48px 56px',
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
@@ -129,8 +119,11 @@ export default function RegistrarScreen() {
             </div>
           </div>
         </div>
-        <div style={{ minHeight: 80 }} />
-        <div style={{ position: 'relative', maxWidth: 380 }}>
+        <div className="w-auth-spacer" style={{ minHeight: 80 }} />
+        <div
+          className="w-auth-pitch"
+          style={{ position: 'relative', maxWidth: 380 }}
+        >
           <h1
             style={{
               fontSize: 32,
@@ -156,8 +149,9 @@ export default function RegistrarScreen() {
             quiser. sem cartão, sem firula.
           </p>
         </div>
-        <div style={{ flex: 1 }} />
+        <div className="w-auth-spacer" style={{ flex: 1 }} />
         <div
+          className="w-auth-foot"
           style={{
             position: 'relative',
             display: 'flex',
@@ -174,15 +168,7 @@ export default function RegistrarScreen() {
       </div>
 
       {/* Right — form */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '40px',
-        }}
-      >
+      <div className="w-auth-form">
         <div style={{ width: '100%', maxWidth: 380 }}>
           <form onSubmit={submit}>
             <div

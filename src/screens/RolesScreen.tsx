@@ -123,7 +123,7 @@ export default function RolesScreen() {
         </WToolbar>
       )}
 
-      <div style={{ padding: '0 32px' }}>
+      <div className="w-page-flat">
         {roles.length === 0 ? (
           <WEmpty
             icon="shield"
@@ -333,13 +333,7 @@ function DrawerRole({
           >
             permissões
           </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 6,
-            }}
-          >
+          <div className="w-grid-2" style={{ gap: 6 }}>
             {cat.map((p) => (
               <label
                 key={p}

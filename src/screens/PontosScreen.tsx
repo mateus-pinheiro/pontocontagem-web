@@ -113,7 +113,7 @@ export default function PontosScreen() {
             { value: 'mes', label: 'este mês' },
           ]}
         />
-        <div style={{ minWidth: 220 }}>
+        <div style={{ minWidth: 200, flex: '1 1 200px', maxWidth: 260 }}>
           <WSelect
             size="sm"
             value={funcFilter}
@@ -158,7 +158,7 @@ export default function PontosScreen() {
       {erro && <WErro mensagem={erro} onRetry={reload} />}
 
       {data && (
-        <div style={{ padding: '0 32px 32px' }}>
+        <div className="w-page">
           <WCard padding={0}>
             <WTable>
               <thead>
@@ -474,13 +474,7 @@ function CorrigirPontoDrawer({
             {erro}
           </div>
         )}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 12,
-          }}
-        >
+        <div className="w-grid-2">
           <label style={{ display: 'block', fontFamily: T.font }}>
             <div
               style={{

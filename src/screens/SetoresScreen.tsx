@@ -66,7 +66,7 @@ export default function SetoresScreen() {
       {erro && <WErro mensagem={erro} onRetry={reload} />}
 
       {data && (
-        <div style={{ padding: '0 32px 32px' }}>
+        <div className="w-page">
           <WCard padding={0}>
             <WTable>
               <thead>

@@ -38,3 +38,208 @@ select {
 ::placeholder {
   color: #b8b3aa;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Responsivo
+   O painel é todo estilo inline (porte fiel do handoff), então tudo que
+   depende de media query mora aqui. A régua é uma variável só — --w-pad —
+   mais um punhado de classes de grid/tabela usadas pelas telas.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --w-pad: 32px;
+}
+
+/* Paddings horizontais de página (header, toolbar, conteúdo) */
+.w-header {
+  padding: 24px var(--w-pad) 18px;
+  align-items: flex-end;
+}
+.w-toolbar {
+  padding: 0 var(--w-pad) 14px;
+}
+.w-page {
+  padding: 0 var(--w-pad) 32px;
+}
+.w-page-tight {
+  padding: 0 var(--w-pad) 12px;
+}
+.w-page-flat {
+  padding: 0 var(--w-pad);
+}
+
+/* Grids */
+.w-grid-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+.w-grid-main {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+}
+.w-grid-aside {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 18px;
+}
+.w-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.w-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* Linha do relatório "horas por funcionário": nome | barra | horas | dias */
+.w-grid-func {
+  display: grid;
+  grid-template-columns: 200px 1fr 120px 90px;
+  gap: 14px;
+  align-items: center;
+}
+
+/* Tabelas: rolam na horizontal em vez de espremer as colunas */
+.w-tablewrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Login / registrar — dois painéis que viram um só em tela estreita */
+.w-auth {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+}
+.w-auth-brand {
+  flex: 0 0 46%;
+  padding: 48px 56px;
+}
+.w-auth-form {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+/* Visibilidade por breakpoint */
+.w-only-mobile,
+.w-sb-overlay {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .w-grid-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --w-pad: 20px;
+  }
+  .w-grid-aside {
+    grid-template-columns: 1fr;
+  }
+  .w-grid-3 {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+  /* nome e barra passam a ocupar a linha inteira; horas e dias dividem a
+     de baixo */
+  .w-grid-func {
+    grid-template-columns: 1fr auto;
+    row-gap: 4px;
+    column-gap: 10px;
+  }
+  .w-grid-func > :nth-child(1),
+  .w-grid-func > :nth-child(2) {
+    grid-column: 1 / -1;
+  }
+  /* Sidebar vira gaveta: sai do fluxo e desliza por cima do conteúdo */
+  .w-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 220;
+    transform: translateX(-100%);
+    transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.12);
+  }
+  .w-sidebar.is-open {
+    transform: translateX(0);
+  }
+  .w-sb-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 210;
+    background: rgba(20, 18, 15, 0.32);
+    animation: wfade 0.18s ease;
+  }
+  .w-only-mobile {
+    display: inline-flex;
+  }
+  /* o painel de marca vira uma faixa fina no topo; a copy de venda sai */
+  .w-auth {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .w-auth-brand {
+    flex: 0 0 auto;
+    padding: 16px var(--w-pad);
+  }
+  .w-auth-pitch,
+  .w-auth-spacer,
+  .w-auth-foot {
+    display: none !important; /* vencem o display inline dos blocos */
+  }
+  .w-auth-form {
+    align-items: flex-start;
+    padding: 28px var(--w-pad) 48px;
+  }
+  .w-hide-mobile {
+    display: none !important;
+  }
+  /* Tabelas do painel não cabem em tela estreita — deixa rolar */
+  .w-tablewrap table {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --w-pad: 14px;
+  }
+  .w-grid-2,
+  .w-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .w-hide-sm {
+    display: none !important;
+  }
+  /* Header da página empilha: título em cima, ações embaixo e largas */
+  .w-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .w-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .w-header-actions > * {
+    flex: 1;
+    min-width: 120px;
+  }
+  .w-toolbar {
+    flex-wrap: wrap;
+  }
+}

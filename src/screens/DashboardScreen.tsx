@@ -75,16 +75,10 @@ export default function DashboardScreen() {
       {erro && <WErro mensagem={erro} onRetry={reload} />}
 
       {data && (
-        <div style={{ padding: '0 32px 32px' }}>
-          {/* Stat row — sem ponto, sobram 2 cards ocupando a linha inteira. */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${ponto ? 4 : 2}, 1fr)`,
-              gap: 14,
-              marginBottom: 18,
-            }}
-          >
+        <div className="w-page">
+          {/* Stat row — sem ponto, sobram 2 cards ocupando a linha inteira.
+              O auto-fit da classe cuida do resto conforme a largura. */}
+          <div className="w-grid-stats" style={{ marginBottom: 18 }}>
             {ponto && (
               <>
                 <WStat
@@ -130,13 +124,7 @@ export default function DashboardScreen() {
           </div>
 
           {/* Main grid */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '2fr 1fr',
-              gap: 18,
-            }}
-          >
+          <div className="w-grid-main">
             {/* Left col */}
             <div
               style={{
@@ -262,6 +250,7 @@ export default function DashboardScreen() {
                           : 'trabalhando'}
                       </WTag>
                       <div
+                        className="w-hide-sm"
                         style={{
                           fontSize: 13,
                           color: T.ink2,
@@ -403,6 +392,7 @@ export default function DashboardScreen() {
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
+                                flexWrap: 'wrap',
                                 gap: 8,
                               }}
                             >

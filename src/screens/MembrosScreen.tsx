@@ -112,7 +112,7 @@ export default function MembrosScreen() {
       />
 
       {aviso && (
-        <div style={{ padding: '0 32px 12px' }}>
+        <div className="w-page-tight">
           <AvisoBox aviso={aviso} onFechar={() => setAviso(null)} />
         </div>
       )}
@@ -124,7 +124,7 @@ export default function MembrosScreen() {
         </WToolbar>
       )}
 
-      <div style={{ padding: '0 32px' }}>
+      <div className="w-page-flat">
         {membros.length === 0 ? (
           <WEmpty
             icon="people"

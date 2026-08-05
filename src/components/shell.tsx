@@ -108,10 +108,14 @@ function Sidebar({
   current,
   onNavigate,
   alerts = {},
+  aberta,
+  onFechar,
 }: {
   current: string;
   onNavigate: (item: NavItem) => void;
   alerts?: Record<string, number>;
+  aberta: boolean;
+  onFechar: () => void;
 }) {
   const { usuario, sair, pode } = useAuth();
   const flags = useFlags();
@@ -120,6 +124,7 @@ function Sidebar({
     (!i.perm || pode(i.perm)) && (!i.flag || flags[i.flag]);
   return (
     <aside
+      className={aberta ? 'w-sidebar is-open' : 'w-sidebar'}
       style={{
         width: 232, background: WT.surface,
         borderRight: `1px solid ${WT.line}`,
@@ -127,6 +132,20 @@ function Sidebar({
         fontFamily: WT.font,
       }}
     >
+      {/* fechar — só aparece com a sidebar em modo gaveta */}
+      <button
+        onClick={onFechar}
+        aria-label="fechar menu"
+        className="w-only-mobile w-icon-btn"
+        style={{
+          position: 'absolute', top: 14, right: 12,
+          width: 32, height: 32, borderRadius: 8, border: 'none',
+          cursor: 'pointer', alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <WIcon name="close" size={18} color={WT.ink2} />
+      </button>
       <div
         style={{
           padding: '20px 18px 14px', display: 'flex',
@@ -269,9 +288,11 @@ function Sidebar({
 function TopBar({
   search,
   onSearchChange,
+  onAbrirMenu,
 }: {
   search: string;
   onSearchChange: (v: string) => void;
+  onAbrirMenu: () => void;
 }) {
   const [agora, setAgora] = useState<Date | null>(null);
   useEffect(() => {
@@ -284,9 +305,22 @@ function TopBar({
       style={{
         height: 56, borderBottom: `1px solid ${WT.line}`,
         background: WT.bg, display: 'flex', alignItems: 'center',
-        gap: 12, padding: '0 24px', flexShrink: 0, fontFamily: WT.font,
+        gap: 12, padding: '0 var(--w-pad)', flexShrink: 0,
+        fontFamily: WT.font,
       }}
     >
+      <button
+        onClick={onAbrirMenu}
+        aria-label="abrir menu"
+        className="w-only-mobile w-icon-btn"
+        style={{
+          width: 36, height: 36, borderRadius: 8, border: 'none',
+          cursor: 'pointer', alignItems: 'center',
+          justifyContent: 'center', flexShrink: 0, marginLeft: -6,
+        }}
+      >
+        <WIcon name="menu" size={20} color={WT.ink} strokeWidth={1.9} />
+      </button>
       <div style={{ position: 'relative', maxWidth: 360, flex: 1 }}>
         <WInput
           icon="search"
@@ -296,8 +330,9 @@ function TopBar({
           onChange={onSearchChange}
         />
       </div>
-      <div style={{ flex: 1 }} />
+      <div style={{ flex: 1 }} className="w-hide-sm" />
       <div
+        className="w-hide-sm"
         style={{
           fontSize: 13, color: WT.ink2, fontWeight: 500,
           display: 'flex', alignItems: 'center', gap: 6,
@@ -334,6 +369,7 @@ export function PageShell({
   const pathname = usePathname();
   const [search, setSearch] = useState('');
   const [pendente, setPendente] = useState<string | null>(null);
+  const [menuAberto, setMenuAberto] = useState(false);
 
   const rotaAtual =
     [...NAV_ITEMS, ...NAV_SECONDARY].find((n) =>
@@ -347,6 +383,18 @@ export function PageShell({
     if (pendente && rotaAtual === pendente) setPendente(null);
   }, [rotaAtual, pendente]);
 
+  // Esc fecha a gaveta; a rota trocar também (o clique já fecha, mas o
+  // voltar do navegador não passa por onNavigate).
+  useEffect(() => setMenuAberto(false), [pathname]);
+  useEffect(() => {
+    if (!menuAberto) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuAberto(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuAberto]);
+
   return (
     <SearchCtx.Provider value={{ search, setSearch }}>
       <div
@@ -355,11 +403,20 @@ export function PageShell({
           background: WT.bg, fontFamily: WT.font, overflow: 'hidden',
         }}
       >
+        {menuAberto && (
+          <div
+            className="w-sb-overlay"
+            onClick={() => setMenuAberto(false)}
+          />
+        )}
         <Sidebar
           current={current}
           alerts={alerts}
+          aberta={menuAberto}
+          onFechar={() => setMenuAberto(false)}
           onNavigate={(item) => {
             setSearch('');
+            setMenuAberto(false);
             if (item.id !== rotaAtual) setPendente(item.id);
             router.push(item.href);
           }}
@@ -370,7 +427,11 @@ export function PageShell({
             minWidth: 0, position: 'relative',
           }}
         >
-          <TopBar search={search} onSearchChange={setSearch} />
+          <TopBar
+            search={search}
+            onSearchChange={setSearch}
+            onAbrirMenu={() => setMenuAberto(true)}
+          />
           <div
             style={{ flex: 1, overflowY: 'auto', position: 'relative' }}
           >

@@ -74,13 +74,8 @@ export default function ListasScreen() {
 
       {listas && (
         <div
-          style={{
-            padding: '0 32px 32px',
-            display: 'grid',
-            gridTemplateColumns: '280px 1fr',
-            gap: 18,
-            alignItems: 'flex-start',
-          }}
+          className="w-page w-grid-aside"
+          style={{ alignItems: 'flex-start' }}
         >
           {/* Left — templates */}
           <WCard padding={0} style={{ position: 'sticky', top: 0 }}>

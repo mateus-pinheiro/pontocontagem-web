@@ -56,7 +56,7 @@ export default function FornecedoresScreen() {
       {erro && <WErro mensagem={erro} onRetry={reload} />}
 
       {data && (
-        <div style={{ padding: '0 32px 32px' }}>
+        <div className="w-page">
           <WCard padding={0}>
             <WTable>
               <thead>
@@ -315,13 +315,7 @@ function FornecedorDrawer({
             placeholder="ex: Distribuidora ABC"
           />
         </div>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 12,
-          }}
-        >
+        <div className="w-grid-2">
           <WInput
             label="contato"
             value={contato}

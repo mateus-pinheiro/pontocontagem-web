@@ -71,7 +71,7 @@ export default function ContagensScreen() {
       {erro && <WErro mensagem={erro} onRetry={reload} />}
 
       {data && (
-        <div style={{ padding: '0 32px 32px' }}>
+        <div className="w-page">
           {/* Hoje */}
           <div style={{ marginBottom: 24 }}>
             <div
@@ -92,13 +92,7 @@ export default function ContagensScreen() {
                 {hoje.length}
               </WTag>
             </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 12,
-              }}
-            >
+            <div className="w-grid-3">
               {hoje.map((c) => (
                 <ContagemCard
                   key={c.id}
@@ -909,13 +903,7 @@ function ContagemDetailDrawer({
             {erro}
           </div>
         )}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 10,
-          }}
-        >
+        <div className="w-grid-3" style={{ gap: 10 }}>
           <MetricTile
             label="contados"
             value={contados.length}
