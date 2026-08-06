@@ -1,8 +1,16 @@
-# Blueprint do Render — painel web Vamos Ponto (Next.js static export).
+# Blueprint do Render — site Ponto Contagem (Next.js static export).
 # O Render lê este arquivo automaticamente ao criar/atualizar o serviço.
+#
+# O `name` tem que bater com o serviço que já existe no Render
+# (pontocontagem-web.onrender.com) — se divergir, um sync do Blueprint cria um
+# serviço novo em vez de atualizar o atual, e o domínio fica apontando pro
+# serviço errado.
+#
+# O export publica a raiz (landing + páginas legais) e o painel sob /web.
+# Domínio e DNS: ver DOMINIO.md.
 services:
   - type: web
-    name: vamosponto-web
+    name: pontocontagem-web
     runtime: static
     buildCommand: npm ci && npm run build
     staticPublishPath: ./out
