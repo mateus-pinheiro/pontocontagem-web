@@ -199,10 +199,11 @@ export default function ListasScreen() {
                   borderBottom: `1px solid ${T.line}`,
                   display: 'flex',
                   alignItems: 'flex-start',
+                  flexWrap: 'wrap',
                   gap: 16,
                 }}
               >
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: '1 1 200px' }}>
                   <h2
                     style={{
                       fontSize: 20,

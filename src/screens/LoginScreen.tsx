@@ -17,8 +17,8 @@ export default function LoginScreen() {
   const { entrar, selecionarEstabelecimento } = useAuth();
 
   const [etapa, setEtapa] = useState<Etapa>('credenciais');
-  const [email, setEmail] = useState('gerente@restaurante.com');
-  const [senha, setSenha] = useState('mudar123');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [estabs, setEstabs] = useState<EstabelecimentoRef[]>([]);
   const [novaSenha, setNovaSenha] = useState('');
