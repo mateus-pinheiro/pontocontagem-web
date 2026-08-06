@@ -3,10 +3,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFlags } from '@/lib/flags';
+import { painel } from '@/lib/rotas';
 import { WLoading } from '@/components/ui';
 import PontosScreen from '@/screens/PontosScreen';
 
-// O export estático publica /pontos/index.html mesmo com a flag desligada,
+// O export estático publica /web/pontos/index.html mesmo com a flag desligada,
 // então o guard tem que ser aqui no cliente. É visibilidade, não segurança —
 // quem manda de verdade é o RBAC da API.
 export default function Page() {
@@ -14,7 +15,7 @@ export default function Page() {
   const router = useRouter();
 
   useEffect(() => {
-    if (pronto && !ponto) router.replace('/');
+    if (pronto && !ponto) router.replace(painel('/'));
   }, [ponto, pronto, router]);
 
   if (!pronto || !ponto) return <WLoading texto="abrindo…" />;

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { LEGAL } from '@/lib/legal';
+import { LEGAL, cpfFormatado } from '@/lib/legal';
 import {
   Destaque,
   LegalPage,
@@ -43,7 +43,7 @@ export default function Page() {
             </>,
             <>
               <strong>{LEGAL.titular}
-              {LEGAL.cpf ? `, CPF ${LEGAL.cpf},` : ''} é o operador</strong>:
+              {LEGAL.cpf ? `, CPF ${cpfFormatado()},` : ''} é o operador</strong>:
               fornece o app e o painel e trata os dados seguindo as instruções
               do estabelecimento.
             </>,

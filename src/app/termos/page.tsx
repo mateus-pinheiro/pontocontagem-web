@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { LEGAL } from '@/lib/legal';
+import { LEGAL, cpfFormatado } from '@/lib/legal';
 import {
   Destaque,
   LegalPage,
@@ -24,7 +24,7 @@ export default function Page() {
       <Secao titulo="1. quem oferece o serviço">
         <P>
           o Ponto Contagem é oferecido por {LEGAL.titular}
-          {LEGAL.cpf ? `, CPF ${LEGAL.cpf}` : ''} (&ldquo;nós&rdquo;), e é
+          {LEGAL.cpf ? `, CPF ${cpfFormatado()}` : ''} (&ldquo;nós&rdquo;), e é
           composto por um aplicativo para colaboradores e um painel web para
           gestores. contato: <Mail />.
         </P>

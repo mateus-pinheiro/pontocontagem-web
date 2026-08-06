@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { useFlags } from '@/lib/flags';
 import { api } from '@/lib/api';
 import { PageShell } from '@/components/shell';
+import { painel } from '@/lib/rotas';
 import { WLoading } from '@/components/ui';
 
 export default function PanelLayout({
@@ -19,7 +20,7 @@ export default function PanelLayout({
   const [alerts, setAlerts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    if (pronto && !usuario) router.replace('/login');
+    if (pronto && !usuario) router.replace(painel('/login'));
   }, [pronto, usuario, router]);
 
   useEffect(() => {

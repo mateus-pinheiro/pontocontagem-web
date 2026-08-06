@@ -5,13 +5,14 @@
 import Link from 'next/link';
 import { WT } from '@/lib/theme';
 import { LEGAL } from '@/lib/legal';
+import { PUBLICAS, painel } from '@/lib/rotas';
 import { BrandMark } from './BrandMark';
 
 const LINKS = [
-  { href: '/termos/', label: 'termos de uso' },
-  { href: '/privacidade/', label: 'privacidade' },
-  { href: '/suporte/', label: 'suporte' },
-  { href: '/excluir-conta/', label: 'excluir conta' },
+  { href: PUBLICAS.termos, label: 'termos de uso' },
+  { href: PUBLICAS.privacidade, label: 'privacidade' },
+  { href: PUBLICAS.suporte, label: 'suporte' },
+  { href: PUBLICAS.excluirConta, label: 'excluir conta' },
 ];
 
 export function LegalPage({
@@ -41,7 +42,7 @@ export function LegalPage({
         }}
       >
         <Link
-          href="/login/"
+          href={painel('/login')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { WT } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
+import { painel } from '@/lib/rotas';
 import { ApiError } from '@/lib/api';
 import { WButton, WIcon, WInput } from '@/components/ui';
 import { BrandMark } from '@/components/BrandMark';
@@ -50,7 +51,7 @@ export default function RegistrarScreen() {
         email: email.trim(),
         senha,
       });
-      router.replace('/');
+      router.replace(painel('/'));
     } catch (err) {
       setErro(
         err instanceof ApiError
@@ -288,7 +289,7 @@ export default function RegistrarScreen() {
                 <span>
                   já tem conta?{' '}
                   <Link
-                    href="/login"
+                    href={painel('/login')}
                     style={{ color: T.ink, fontWeight: 600 }}
                   >
                     entrar

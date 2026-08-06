@@ -13,6 +13,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { WT } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { useFlags, type FlagKey } from '@/lib/flags';
+import { painel } from '@/lib/rotas';
 import { fmtDataLonga } from '@/lib/format';
 import type { Permissao } from '@/lib/api';
 import { WAvatar, WIcon, WInput } from './ui';
@@ -371,9 +372,14 @@ export function PageShell({
   const [pendente, setPendente] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
 
+  // `href` dos itens é rota lógica ('/itens'); o pathname vem com o prefixo do
+  // painel e com barra final (trailingSlash). Normaliza os dois antes de casar.
+  const atual = pathname.endsWith('/') ? pathname : `${pathname}/`;
   const rotaAtual =
     [...NAV_ITEMS, ...NAV_SECONDARY].find((n) =>
-      n.href === '/' ? pathname === '/' : pathname.startsWith(n.href),
+      n.href === '/'
+        ? atual === painel('/')
+        : atual.startsWith(`${painel(n.href)}/`),
     )?.id || 'dashboard';
 
   // Otimista: o item clicado já fica ativo no clique; quando a rota
@@ -418,7 +424,7 @@ export function PageShell({
             setSearch('');
             setMenuAberto(false);
             if (item.id !== rotaAtual) setPendente(item.id);
-            router.push(item.href);
+            router.push(painel(item.href));
           }}
         />
         <div

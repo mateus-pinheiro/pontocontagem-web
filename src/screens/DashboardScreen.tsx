@@ -6,6 +6,7 @@ import { api, type Dashboard } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { useFlag } from '@/lib/flags';
 import { fmtDataLonga } from '@/lib/format';
+import { painel } from '@/lib/rotas';
 import {
   WAvatar,
   WButton,
@@ -63,7 +64,7 @@ export default function DashboardScreen() {
               kind="primary"
               size="md"
               icon="plus"
-              onClick={() => router.push('/contagens')}
+              onClick={() => router.push(painel('/contagens'))}
             >
               nova contagem
             </WButton>
@@ -170,7 +171,7 @@ export default function DashboardScreen() {
                     </div>
                   </div>
                   <button
-                    onClick={() => router.push('/funcionarios')}
+                    onClick={() => router.push(painel('/membros'))}
                     style={{
                       background: 'transparent',
                       border: 'none',
@@ -310,7 +311,7 @@ export default function DashboardScreen() {
                     kind="neutral"
                     size="sm"
                     icon="plus"
-                    onClick={() => router.push('/contagens')}
+                    onClick={() => router.push(painel('/contagens'))}
                   >
                     nova
                   </WButton>
@@ -357,7 +358,7 @@ export default function DashboardScreen() {
                         onMouseLeave={(e) =>
                           (e.currentTarget.style.borderColor = T.line)
                         }
-                        onClick={() => router.push('/contagens')}
+                        onClick={() => router.push(painel('/contagens'))}
                       >
                         <div
                           style={{
@@ -595,8 +596,8 @@ export default function DashboardScreen() {
                             onClick={() =>
                               router.push(
                                 a.tipo === 'contagem'
-                                  ? '/contagens'
-                                  : '/pontos',
+                                  ? painel('/contagens')
+                                  : painel('/pontos'),
                               )
                             }
                             style={{
@@ -652,7 +653,7 @@ export default function DashboardScreen() {
                 <MiniBarChart data={data.horasSemana} />
                 <div style={{ padding: '4px 20px 16px' }}>
                   <button
-                    onClick={() => router.push('/relatorios')}
+                    onClick={() => router.push(painel('/relatorios'))}
                     style={{
                       background: 'transparent',
                       border: 'none',

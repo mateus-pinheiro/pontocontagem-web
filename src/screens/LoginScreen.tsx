@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { WT } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
+import { painel } from '@/lib/rotas';
 import { ApiError, api, type EstabelecimentoRef } from '@/lib/api';
 import { WButton, WIcon, WInput } from '@/components/ui';
 import { BrandMark } from '@/components/BrandMark';
@@ -31,7 +32,7 @@ export default function LoginScreen() {
       setEtapa('trocar-senha');
       setCarregando(false);
     } else {
-      router.replace('/');
+      router.replace(painel('/'));
     }
   }
 
@@ -88,7 +89,7 @@ export default function LoginScreen() {
     setCarregando(true);
     try {
       await api.trocarSenha(senha, novaSenha);
-      router.replace('/');
+      router.replace(painel('/'));
     } catch (err) {
       setErro(
         err instanceof ApiError
@@ -267,7 +268,7 @@ export default function LoginScreen() {
                 >
                   <span>ainda não tem conta?</span>
                   <Link
-                    href="/registrar"
+                    href={painel('/registrar')}
                     style={{ color: T.ink, fontWeight: 600 }}
                   >
                     criar uma agora
