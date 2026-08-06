@@ -362,6 +362,28 @@ export default function LoginScreen() {
               </div>
             </form>
           )}
+
+          {/* documentos públicos — as lojas exigem que sejam alcançáveis */}
+          <div
+            style={{
+              marginTop: 28,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '6px 14px',
+              fontSize: 12,
+              fontWeight: 500,
+            }}
+          >
+            <Link href="/termos/" style={{ color: T.ink3 }}>
+              termos de uso
+            </Link>
+            <Link href="/privacidade/" style={{ color: T.ink3 }}>
+              privacidade
+            </Link>
+            <Link href="/suporte/" style={{ color: T.ink3 }}>
+              suporte
+            </Link>
+          </div>
         </div>
       </div>
     </div>
