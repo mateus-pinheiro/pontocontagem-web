@@ -599,8 +599,26 @@ export const api = {
     }),
 
   // itens
-  itens: (categoriaId?: string, busca?: string) =>
-    request<Paginado<Item>>(`/itens${qs({ categoriaId, busca, limit: 100 })}`),
+  //
+  // A API limita a página a 100 (`PaginationDto.@Max(100)`) e a tela de itens
+  // não tem paginação — pedir uma página só truncava o catálogo em silêncio:
+  // o setor Bar do Pitéu tem 117 itens e 17 simplesmente não apareciam.
+  // Varre as páginas e devolve tudo junto, sem mudar o contrato da API.
+  itens: async (categoriaId?: string, busca?: string) => {
+    const limit = 100;
+    const primeira = await request<Paginado<Item>>(
+      `/itens${qs({ categoriaId, busca, limit })}`,
+    );
+    const dados = [...primeira.dados];
+    const paginas = Math.ceil(primeira.total / limit);
+    for (let page = 2; page <= paginas; page++) {
+      const seguinte = await request<Paginado<Item>>(
+        `/itens${qs({ categoriaId, busca, limit, page })}`,
+      );
+      dados.push(...seguinte.dados);
+    }
+    return { ...primeira, dados } satisfies Paginado<Item>;
+  },
   item: (id: string) => request<ItemDetalhe>(`/itens/${id}`),
   criarItem: (body: {
     nome: string;
