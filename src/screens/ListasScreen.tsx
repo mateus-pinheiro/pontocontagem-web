@@ -569,65 +569,7 @@ function NovaListaDrawer({
           >
             itens ({sel.length} selecionados)
           </div>
-          <div
-            style={{
-              border: `1px solid ${T.line}`,
-              borderRadius: 9,
-              padding: 4,
-              background: T.surface2,
-              maxHeight: 360,
-              overflow: 'auto',
-            }}
-          >
-            {catalogo.map((i) => {
-              const checked = sel.includes(i.id);
-              return (
-                <label
-                  key={i.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 10px',
-                    borderRadius: 7,
-                    cursor: 'pointer',
-                    background: checked ? T.lineSoft : 'transparent',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() =>
-                      setSel((s) =>
-                        checked
-                          ? s.filter((x) => x !== i.id)
-                          : [...s, i.id],
-                      )
-                    }
-                    style={{
-                      accentColor: T.ink,
-                      width: 15,
-                      height: 15,
-                    }}
-                  />
-                  <div
-                    style={{
-                      flex: 1,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: T.ink,
-                      letterSpacing: -0.1,
-                    }}
-                  >
-                    {i.nome}
-                  </div>
-                  <div style={{ fontSize: 12, color: T.ink3 }}>
-                    {i.unidade}
-                  </div>
-                </label>
-              );
-            })}
-          </div>
+          <SelecaoItens itens={catalogo} sel={sel} onChange={setSel} />
         </div>
       </div>
     </WDrawer>
@@ -746,73 +688,243 @@ function AddItemDrawer({
         </>
       }
     >
-      <div
-        style={{
-          border: `1px solid ${T.line}`,
-          borderRadius: 9,
-          padding: 4,
-          background: T.surface2,
+      {disponiveis.length === 0 ? (
+        <div
+          style={{
+            padding: 16,
+            fontSize: 13,
+            color: T.ink3,
+            fontWeight: 500,
+            textAlign: 'center',
+            border: `1px solid ${T.line}`,
+            borderRadius: 9,
+            background: T.surface2,
+          }}
+        >
+          todos os itens do catálogo já estão na lista.
+        </div>
+      ) : (
+        <SelecaoItens itens={disponiveis} sel={sel} onChange={setSel} />
+      )}
+    </WDrawer>
+  );
+}
+
+// ── Seleção de itens agrupada por setor ──────────────────────────────────
+// Um catálogo real tem centenas de itens (o Pitéu tem 263), e escolher um a
+// um pra montar lista de contagem é inviável. Aqui os itens vêm agrupados por
+// setor → categoria, com "todos" em cada nível: montar a lista do Bar inteiro
+// é um clique. Setores começam fechados pra tela caber; o contador diz o que
+// está selecionado dentro de cada um.
+function SelecaoItens({
+  itens,
+  sel,
+  onChange,
+}: {
+  itens: Item[];
+  sel: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const T = WT;
+  const selSet = new Set(sel);
+
+  // setor → categoria → itens. `setor` só vem no payload de /itens; se faltar,
+  // cai num grupo neutro em vez de sumir da lista.
+  const grupos = useMemo(() => {
+    const porSetor = new Map<string, { nome: string; cats: Map<string, Item[]> }>();
+    for (const i of itens) {
+      const setor = i.categoria.setor;
+      const chave = setor?.id ?? '__sem_setor';
+      if (!porSetor.has(chave)) {
+        porSetor.set(chave, { nome: setor?.nome ?? 'sem setor', cats: new Map() });
+      }
+      const g = porSetor.get(chave)!;
+      const cat = i.categoria.nome;
+      if (!g.cats.has(cat)) g.cats.set(cat, []);
+      g.cats.get(cat)!.push(i);
+    }
+    // Array.from em vez de spread: o tsconfig não fixa `target`, então o tsc
+    // assume ES5 e recusa espalhar iterador de Map.
+    return Array.from(porSetor.entries())
+      .map(([id, g]) => ({
+        id,
+        nome: g.nome,
+        cats: Array.from(g.cats.entries())
+          .map(([nome, lista]) => ({ nome, itens: lista }))
+          .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+        itens: Array.from(g.cats.values()).flat(),
+      }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [itens]);
+
+  const [abertos, setAbertos] = useState<string[]>([]);
+
+  function alternar(ids: string[]) {
+    const todosDentro = ids.every((id) => selSet.has(id));
+    onChange(
+      todosDentro
+        ? sel.filter((id) => !ids.includes(id))
+        : [...sel, ...ids.filter((id) => !selSet.has(id))],
+    );
+  }
+
+  const botaoTodos = (ids: string[], size: 'xs' | 'sm') => {
+    const marcados = ids.filter((id) => selSet.has(id)).length;
+    const todos = marcados === ids.length;
+    return (
+      <WButton
+        kind={todos ? 'soft' : 'neutral'}
+        size={size}
+        onClick={(e) => {
+          e.stopPropagation();
+          alternar(ids);
         }}
       >
-        {disponiveis.length === 0 && (
+        {todos ? 'limpar' : `todos (${ids.length})`}
+      </WButton>
+    );
+  };
+
+  if (itens.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {grupos.map((g) => {
+        const aberto = abertos.includes(g.id);
+        const marcados = g.itens.filter((i) => selSet.has(i.id)).length;
+        return (
           <div
+            key={g.id}
             style={{
-              padding: 16,
-              fontSize: 13,
-              color: T.ink3,
-              fontWeight: 500,
-              textAlign: 'center',
+              border: `1px solid ${T.line}`,
+              borderRadius: 10,
+              overflow: 'hidden',
+              background: T.surface2,
             }}
           >
-            todos os itens do catálogo já estão na lista.
-          </div>
-        )}
-        {disponiveis.map((i) => {
-          const checked = sel.includes(i.id);
-          return (
-            <label
-              key={i.id}
+            <div
+              onClick={() =>
+                setAbertos((a) =>
+                  aberto ? a.filter((x) => x !== g.id) : [...a, g.id],
+                )
+              }
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                padding: '8px 10px',
-                borderRadius: 7,
+                padding: '10px 12px',
                 cursor: 'pointer',
-                background: checked ? T.lineSoft : 'transparent',
+                background: T.surface,
+                borderBottom: aberto ? `1px solid ${T.line}` : 'none',
               }}
             >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() =>
-                  setSel((s) =>
-                    checked
-                      ? s.filter((x) => x !== i.id)
-                      : [...s, i.id],
-                  )
-                }
-                style={{ accentColor: T.ink, width: 15, height: 15 }}
+              <WIcon
+                name={aberto ? 'chevronDown' : 'chevronRight'}
+                size={15}
+                color={T.ink3}
               />
-              <div
-                style={{
-                  flex: 1,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: T.ink,
-                  letterSpacing: -0.1,
-                }}
-              >
-                {i.nome}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: T.ink,
+                    letterSpacing: -0.15,
+                  }}
+                >
+                  {g.nome}
+                </div>
+                <div style={{ fontSize: 12, color: T.ink3, fontWeight: 500 }}>
+                  {marcados > 0
+                    ? `${marcados} de ${g.itens.length} selecionados`
+                    : `${g.itens.length} itens · ${g.cats.length} categorias`}
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: T.ink3 }}>
-                {i.unidade}
+              {botaoTodos(
+                g.itens.map((i) => i.id),
+                'sm',
+              )}
+            </div>
+
+            {aberto && (
+              <div style={{ padding: 6 }}>
+                {g.cats.map((c) => (
+                  <div key={c.nome} style={{ marginBottom: 4 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '6px 6px 6px 8px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          flex: 1,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: T.ink3,
+                          letterSpacing: 0.4,
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {c.nome}
+                      </div>
+                      {botaoTodos(
+                        c.itens.map((i) => i.id),
+                        'xs',
+                      )}
+                    </div>
+                    {c.itens.map((i) => {
+                      const checked = selSet.has(i.id);
+                      return (
+                        <label
+                          key={i.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '7px 10px',
+                            borderRadius: 7,
+                            cursor: 'pointer',
+                            background: checked ? T.lineSoft : 'transparent',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => alternar([i.id])}
+                            style={{
+                              accentColor: T.ink,
+                              width: 15,
+                              height: 15,
+                            }}
+                          />
+                          <div
+                            style={{
+                              flex: 1,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: T.ink,
+                              letterSpacing: -0.1,
+                            }}
+                          >
+                            {i.nome}
+                          </div>
+                          <div style={{ fontSize: 12, color: T.ink3 }}>
+                            {i.unidade}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
-            </label>
-          );
-        })}
-      </div>
-    </WDrawer>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
