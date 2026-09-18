@@ -161,6 +161,18 @@ export interface Fornecedor extends FornecedorResumo {
   atualizadoEm: string;
 }
 
+export interface FornecedorDetalhe extends Fornecedor {
+  itensVinculados: {
+    id: string;
+    nome: string;
+    unidade: string;
+    ativo: boolean;
+    categoria: { id: string; nome: string; cor: CorCategoria };
+    principal: boolean;
+    codigo: string | null;
+  }[];
+}
+
 export interface ItemFornecedorLink {
   principal: boolean;
   codigo: string | null;
@@ -174,6 +186,8 @@ export interface Item {
   categoria: CategoriaResumo;
   fornecedores: ItemFornecedorLink[];
   unidade: string;
+  /** Nível de reposição. null = não definido (≠ 0). */
+  estoqueMinimo: number | null;
   ativo: boolean;
   criadoEm: string;
   atualizadoEm: string;
@@ -221,7 +235,13 @@ export interface ContagemDetalhe {
   atribuidos: { id: string; nome: string }[];
   itens: {
     ordem: number;
-    item: { id: string; nome: string; categoria: CategoriaResumo; unidade: string };
+    item: {
+      id: string;
+      nome: string;
+      categoria: CategoriaResumo;
+      unidade: string;
+      estoqueMinimo: number | null;
+    };
     quantidade: number | null;
     contadoPor: { id: string; nome: string } | null;
     registradoEm: string | null;
@@ -571,6 +591,8 @@ export const api = {
 
   // fornecedores (cadastro por estabelecimento; ligado a itens via M:N)
   fornecedores: () => request<Fornecedor[]>('/fornecedores'),
+  fornecedor: (id: string) =>
+    request<FornecedorDetalhe>(`/fornecedores/${id}`),
   criarFornecedor: (body: {
     nome: string;
     contato?: string;
@@ -591,6 +613,8 @@ export const api = {
       email?: string | null;
       observacoes?: string | null;
       ativo?: boolean;
+      // undefined = não mexe nos vínculos; [] = desvincula todos.
+      itemIds?: string[];
     },
   ) =>
     request<Fornecedor>(`/fornecedores/${id}`, {
@@ -625,6 +649,7 @@ export const api = {
     descricao?: string;
     categoriaId: string;
     unidade: string;
+    estoqueMinimo?: number;
     fornecedores?: {
       fornecedorId: string;
       principal?: boolean;
@@ -639,6 +664,7 @@ export const api = {
       descricao?: string | null;
       categoriaId?: string;
       unidade?: string;
+      estoqueMinimo?: number | null;
       ativo?: boolean;
       fornecedores?: {
         fornecedorId: string;

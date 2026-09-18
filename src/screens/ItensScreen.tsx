@@ -211,6 +211,9 @@ export default function ItensScreen() {
                   <WTh width={100} align="right">
                     unidade
                   </WTh>
+                  <WTh width={120} align="right">
+                    estoque mín.
+                  </WTh>
                   <WTh width={160} align="right">
                     último contado
                   </WTh>
@@ -275,6 +278,23 @@ export default function ItensScreen() {
                       }}
                     >
                       {i.unidade}
+                    </WTd>
+                    <WTd
+                      align="right"
+                      style={{ fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {i.estoqueMinimo !== null ? (
+                        <>
+                          <span style={{ fontWeight: 600, color: T.ink }}>
+                            {fmtQtd(i.estoqueMinimo)}
+                          </span>
+                          <span style={{ color: T.ink3, marginLeft: 4 }}>
+                            {i.unidade}
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ color: T.ink3 }}>—</span>
+                      )}
                     </WTd>
                     <WTd
                       align="right"
@@ -365,6 +385,18 @@ const pulseKeyframes = `@keyframes wPulse {
   100% { box-shadow: 0 0 0 0   rgba(217,119,87,0); }
 }`;
 
+/**
+ * '' -> null (limpa o mínimo); número válido >= 0 -> number;
+ * qualquer outra coisa -> 'invalido' pra tela reclamar antes de chamar a API.
+ */
+function parseEstoqueMinimo(v: string): number | null | 'invalido' {
+  const t = v.trim();
+  if (t === '') return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0) return 'invalido';
+  return n;
+}
+
 function rotuloCategoria(c: { nome: string; parent?: { nome: string } | null }) {
   return c.parent ? `${c.parent.nome} › ${c.nome}` : c.nome;
 }
@@ -394,6 +426,8 @@ function ItemDrawer({
   const [setorId, setSetorId] = useState<string>(setores[0]?.id ?? '');
   const [categoriaId, setCategoriaId] = useState<string>('');
   const [unidade, setUnidade] = useState('un');
+  // string vazia = sem mínimo definido (o back guarda null).
+  const [estoqueMinimo, setEstoqueMinimo] = useState('');
   const [vinculos, setVinculos] = useState<VinculoForn[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -423,6 +457,9 @@ function ItemDrawer({
         setSetorId(d.categoria.setor?.id ?? setores[0]?.id ?? '');
         setCategoriaId(d.categoria.id);
         setUnidade(d.unidade);
+        setEstoqueMinimo(
+          d.estoqueMinimo === null ? '' : String(d.estoqueMinimo),
+        );
         setVinculos(
           (d.fornecedores ?? []).map((v) => ({
             fornecedorId: v.fornecedor.id,
@@ -446,6 +483,11 @@ function ItemDrawer({
       setErro('escolha uma categoria.');
       return;
     }
+    const minimo = parseEstoqueMinimo(estoqueMinimo);
+    if (minimo === 'invalido') {
+      setErro('o estoque mínimo precisa ser um número maior ou igual a 0.');
+      return;
+    }
     setSalvando(true);
     const d = descricao.trim();
     const fornPayload = vinculos.map((v) => ({
@@ -460,6 +502,7 @@ function ItemDrawer({
           ...(d ? { descricao: d } : {}),
           categoriaId,
           unidade,
+          ...(minimo !== null ? { estoqueMinimo: minimo } : {}),
           ...(fornPayload.length > 0 ? { fornecedores: fornPayload } : {}),
         });
       } else {
@@ -468,6 +511,7 @@ function ItemDrawer({
           descricao: d.length > 0 ? d : null,
           categoriaId,
           unidade,
+          estoqueMinimo: minimo,
           fornecedores: fornPayload,
         });
       }
@@ -634,18 +678,27 @@ function ItemDrawer({
             }
           />
         </div>
-        <WSelect
-          label="unidade"
-          value={unidade}
-          onChange={setUnidade}
-          options={[
-            { value: 'un', label: 'unidades (un)' },
-            { value: 'kg', label: 'quilogramas (kg)' },
-            { value: 'L', label: 'litros (L)' },
-            { value: 'g', label: 'gramas (g)' },
-            { value: 'ml', label: 'mililitros (ml)' },
-          ]}
-        />
+        <div className="w-grid-2">
+          <WSelect
+            label="unidade"
+            value={unidade}
+            onChange={setUnidade}
+            options={[
+              { value: 'un', label: 'unidades (un)' },
+              { value: 'kg', label: 'quilogramas (kg)' },
+              { value: 'L', label: 'litros (L)' },
+              { value: 'g', label: 'gramas (g)' },
+              { value: 'ml', label: 'mililitros (ml)' },
+            ]}
+          />
+          <WInput
+            label="estoque mínimo"
+            value={estoqueMinimo}
+            onChange={(v) => setEstoqueMinimo(v.replace(',', '.'))}
+            placeholder="ex: 24"
+            hint={`em ${unidade} · vazio = sem mínimo`}
+          />
+        </div>
 
         <div>
           <div

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { WT } from '@/lib/theme';
-import { api, type Fornecedor } from '@/lib/api';
+import { api, type Fornecedor, type Item } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import {
   WButton,
@@ -20,6 +20,8 @@ import {
   WTh,
   WTr,
 } from '@/components/ui';
+
+type TagTone = 'neutral' | 'terra' | 'green' | 'blue' | 'amber';
 
 type DrawerState =
   | { tipo: 'fechado' }
@@ -203,9 +205,73 @@ function FornecedorDrawer({
   const [erro, setErro] = useState<string | null>(null);
   const inputRef = useRef<HTMLDivElement>(null);
 
+  // Catálogo inteiro pra escolher o que este fornecedor atende.
+  const { data: catalogo, loading: carregandoItens } = useApi(
+    () => api.itens(),
+    [],
+  );
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [vinculosCarregados, setVinculosCarregados] = useState(isNew);
+  const [busca, setBusca] = useState('');
+  const [soSelecionados, setSoSelecionados] = useState(false);
+
   useEffect(() => {
     inputRef.current?.querySelector('input')?.focus();
   }, []);
+
+  // Vínculos atuais do fornecedor (só no modo edição).
+  useEffect(() => {
+    if (!f) return;
+    let vivo = true;
+    api
+      .fornecedor(f.id)
+      .then((d) => {
+        if (!vivo) return;
+        setSelecionados(new Set(d.itensVinculados.map((i) => i.id)));
+        setVinculosCarregados(true);
+      })
+      .catch((e) => {
+        if (!vivo) return;
+        setErro(e instanceof Error ? e.message : 'erro ao carregar os itens');
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [f]);
+
+  const itens = useMemo(() => catalogo?.dados ?? [], [catalogo]);
+  const visiveis = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return itens.filter((i) => {
+      if (soSelecionados && !selecionados.has(i.id)) return false;
+      if (!termo) return true;
+      return (
+        i.nome.toLowerCase().includes(termo) ||
+        i.categoria.nome.toLowerCase().includes(termo) ||
+        (i.categoria.setor?.nome ?? '').toLowerCase().includes(termo)
+      );
+    });
+  }, [itens, busca, soSelecionados, selecionados]);
+
+  function alternar(id: string) {
+    setSelecionados((cur) => {
+      const proximo = new Set(cur);
+      if (proximo.has(id)) proximo.delete(id);
+      else proximo.add(id);
+      return proximo;
+    });
+  }
+
+  function marcarVisiveis(marcar: boolean) {
+    setSelecionados((cur) => {
+      const proximo = new Set(cur);
+      for (const i of visiveis) {
+        if (marcar) proximo.add(i.id);
+        else proximo.delete(i.id);
+      }
+      return proximo;
+    });
+  }
 
   async function salvar() {
     setErro(null);
@@ -215,15 +281,19 @@ function FornecedorDrawer({
       return;
     }
     setSalvando(true);
+    const itemIds = Array.from(selecionados);
     try {
       if (isNew) {
-        await api.criarFornecedor({
+        const criado = await api.criarFornecedor({
           nome: n,
           contato: contato.trim() || undefined,
           telefone: telefone.trim() || undefined,
           email: email.trim() || undefined,
           observacoes: observacoes.trim() || undefined,
         });
+        if (itemIds.length > 0) {
+          await api.atualizarFornecedor(criado.id, { itemIds });
+        }
       } else if (f) {
         await api.atualizarFornecedor(f.id, {
           nome: n,
@@ -231,6 +301,9 @@ function FornecedorDrawer({
           telefone: telefone.trim() || null,
           email: email.trim() || null,
           observacoes: observacoes.trim() || null,
+          // Só manda os vínculos se eles já chegaram — senão um salvamento
+          // rápido apagaria tudo mandando uma lista vazia.
+          ...(vinculosCarregados ? { itemIds } : {}),
         });
       }
       onSaved();
@@ -261,9 +334,11 @@ function FornecedorDrawer({
       subtitle={
         isNew
           ? 'cadastro do estabelecimento'
-          : `${f?.itens ?? 0} ${f?.itens === 1 ? 'item' : 'itens'} vinculados`
+          : `${selecionados.size} ${
+              selecionados.size === 1 ? 'item' : 'itens'
+            } vinculados`
       }
-      width={460}
+      width={520}
       footer={
         <>
           {f && (
@@ -369,7 +444,230 @@ function FornecedorDrawer({
             }}
           />
         </label>
+
+        <div style={{ height: 1, background: T.lineSoft, margin: '2px 0' }} />
+
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              marginBottom: 8,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: T.ink2,
+                letterSpacing: -0.1,
+              }}
+            >
+              itens deste fornecedor{' '}
+              <span style={{ color: T.ink3, fontWeight: 500 }}>
+                ({selecionados.size} de {itens.length})
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <MiniBotao
+                onClick={() => marcarVisiveis(true)}
+                disabled={visiveis.length === 0}
+              >
+                marcar todos
+              </MiniBotao>
+              <MiniBotao
+                onClick={() => marcarVisiveis(false)}
+                disabled={visiveis.length === 0}
+              >
+                limpar
+              </MiniBotao>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <WInput
+              value={busca}
+              onChange={setBusca}
+              placeholder="buscar item, categoria ou setor…"
+              icon="search"
+              size="sm"
+              style={{ flex: 1 }}
+            />
+            <MiniBotao
+              onClick={() => setSoSelecionados((v) => !v)}
+              ativo={soSelecionados}
+            >
+              só marcados
+            </MiniBotao>
+          </div>
+
+          {carregandoItens || !vinculosCarregados ? (
+            <div
+              style={{
+                fontSize: 13,
+                color: T.ink3,
+                fontWeight: 500,
+                padding: '14px 12px',
+                border: `1px dashed ${T.line}`,
+                borderRadius: 9,
+              }}
+            >
+              carregando catálogo…
+            </div>
+          ) : itens.length === 0 ? (
+            <div
+              style={{
+                fontSize: 13,
+                color: T.ink3,
+                fontWeight: 500,
+                padding: '14px 12px',
+                border: `1px dashed ${T.line}`,
+                borderRadius: 9,
+              }}
+            >
+              cadastre itens em /itens pra vincular aqui.
+            </div>
+          ) : (
+            <div
+              style={{
+                border: `1px solid ${T.line}`,
+                borderRadius: 11,
+                overflow: 'hidden',
+                background: T.surface2,
+                maxHeight: 320,
+                overflowY: 'auto',
+              }}
+            >
+              {visiveis.length === 0 && (
+                <div
+                  style={{
+                    padding: '14px 12px',
+                    fontSize: 13,
+                    color: T.ink3,
+                    fontWeight: 500,
+                  }}
+                >
+                  nenhum item nesse filtro.
+                </div>
+              )}
+              {visiveis.map((i, idx) => (
+                <ItemLinha
+                  key={i.id}
+                  item={i}
+                  marcado={selecionados.has(i.id)}
+                  onToggle={() => alternar(i.id)}
+                  ultimo={idx === visiveis.length - 1}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </WDrawer>
+  );
+}
+
+function ItemLinha({
+  item,
+  marcado,
+  onToggle,
+  ultimo,
+}: {
+  item: Item;
+  marcado: boolean;
+  onToggle: () => void;
+  ultimo: boolean;
+}) {
+  const T = WT;
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '9px 12px',
+        cursor: 'pointer',
+        background: marcado ? T.surface : 'transparent',
+        borderBottom: ultimo ? 'none' : `1px solid ${T.lineSoft}`,
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={marcado}
+        onChange={onToggle}
+        style={{ accentColor: T.ink, width: 15, height: 15, flexShrink: 0 }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: T.ink,
+            letterSpacing: -0.1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {item.nome}
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: T.ink3,
+            marginTop: 2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {item.categoria.setor ? `${item.categoria.setor.nome} · ` : ''}
+          {item.categoria.nome}
+        </div>
+      </div>
+      <WTag tone={item.categoria.cor as TagTone} size="xs">
+        {item.unidade}
+      </WTag>
+    </label>
+  );
+}
+
+function MiniBotao({
+  children,
+  onClick,
+  disabled,
+  ativo,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  ativo?: boolean;
+}) {
+  const T = WT;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        height: 32,
+        padding: '0 10px',
+        background: ativo ? T.ink : T.surface2,
+        color: ativo ? T.surface : T.ink2,
+        border: `1px solid ${ativo ? T.ink : T.line}`,
+        borderRadius: 8,
+        fontFamily: T.font,
+        fontSize: 12,
+        fontWeight: 600,
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </button>
   );
 }

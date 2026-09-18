@@ -10,6 +10,7 @@ import {
   type Membro,
 } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
+import { downloadCsv, slugify, type Row } from '@/lib/csv';
 import { fmtDataContagem, fmtQtd, hojeISO } from '@/lib/format';
 import {
   WAvatar,
@@ -793,11 +794,26 @@ function ContagemDetailDrawer({
   const [c, setC] = useState<ContagemDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [agindo, setAgindo] = useState(false);
+  // Pedido por item (itemId -> texto do input). Começa na sugestão
+  // "mínimo - contado" e fica livre pra edição; vive só enquanto a gaveta
+  // está aberta — o que sai daqui é a planilha.
+  const [pedidos, setPedidos] = useState<Record<string, string>>({});
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     api
       .contagem(contagemId)
-      .then(setC)
+      .then((d) => {
+        setC(d);
+        setPedidos(
+          Object.fromEntries(
+            d.itens.map((it) => [
+              it.item.id,
+              sugestaoPedido(it.item.estoqueMinimo, it.quantidade),
+            ]),
+          ),
+        );
+      })
       .catch((e) =>
         setErro(e instanceof Error ? e.message : 'erro ao carregar'),
       );
@@ -839,11 +855,37 @@ function ContagemDetailDrawer({
     }
   }
 
+  function exportarPedido() {
+    const contagem = c!;
+    const rows: Row[] = [
+      [
+        'Nome do Produto',
+        'Unidade de medida',
+        'Estoque mínimo',
+        'Estoque Atual (Última Contagem)',
+        'Pedido',
+      ],
+      ...contagem.itens.map((it): Row => [
+        it.item.nome,
+        it.item.unidade,
+        it.item.estoqueMinimo === null ? '' : fmtQtd(it.item.estoqueMinimo),
+        it.quantidade === null ? '' : fmtQtd(it.quantidade),
+        (pedidos[it.item.id] ?? '').trim(),
+      ]),
+    ];
+    downloadCsv(
+      `pedido-${slugify(contagem.template.nome)}-${contagem.data.slice(0, 10)}`,
+      rows,
+    );
+    setFeedback('planilha baixada.');
+    window.setTimeout(() => setFeedback(null), 2400);
+  }
+
   return (
     <WDrawer
       open
       onClose={onClose}
-      width={520}
+      width={600}
       title={`contagem de ${c.template.nome}`}
       subtitle={`${fmtDataContagem(c.data)} · ${
         finalizada
@@ -853,8 +895,8 @@ function ContagemDetailDrawer({
           : 'em aberto'
       }`}
       footer={
-        finalizada ? (
-          <>
+        <>
+          {finalizada ? (
             <WButton
               kind="softDanger"
               size="md"
@@ -864,13 +906,7 @@ function ContagemDetailDrawer({
             >
               reabrir contagem
             </WButton>
-            <div style={{ flex: 1 }} />
-            <WButton kind="primary" size="md" onClick={onClose}>
-              fechar
-            </WButton>
-          </>
-        ) : (
-          <>
+          ) : (
             <WButton
               kind="softDanger"
               size="md"
@@ -880,12 +916,20 @@ function ContagemDetailDrawer({
             >
               cancelar contagem
             </WButton>
-            <div style={{ flex: 1 }} />
-            <WButton kind="primary" size="md" onClick={onClose}>
-              fechar
-            </WButton>
-          </>
-        )
+          )}
+          <div style={{ flex: 1 }} />
+          <WButton
+            kind="neutral"
+            size="md"
+            icon="download"
+            onClick={exportarPedido}
+          >
+            exportar pedido
+          </WButton>
+          <WButton kind="primary" size="md" onClick={onClose}>
+            fechar
+          </WButton>
+        </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -901,6 +945,20 @@ function ContagemDetailDrawer({
             }}
           >
             {erro}
+          </div>
+        )}
+        {feedback && (
+          <div
+            style={{
+              padding: '10px 12px',
+              background: T.greenSoft,
+              borderRadius: 8,
+              fontSize: 13,
+              color: T.green,
+              fontWeight: 600,
+            }}
+          >
+            {feedback}
           </div>
         )}
         <div className="w-grid-3" style={{ gap: 10 }}>
@@ -983,11 +1041,31 @@ function ContagemDetailDrawer({
               background: T.surface2,
             }}
           >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '7px 14px',
+                background: T.lineSoft,
+                borderBottom: `1px solid ${T.line}`,
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 0.4,
+                textTransform: 'uppercase',
+                color: T.ink3,
+              }}
+            >
+              <span style={{ flex: 1, minWidth: 0 }}>item</span>
+              <span style={{ width: 52, textAlign: 'right' }}>mín.</span>
+              <span style={{ width: 62, textAlign: 'right' }}>atual</span>
+              <span style={{ width: 76, textAlign: 'center' }}>pedido</span>
+            </div>
             {c.itens.map((it, i) => (
               <div
                 key={it.item.id}
                 style={{
-                  padding: '10px 14px',
+                  padding: '8px 14px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
@@ -1029,51 +1107,112 @@ function ContagemDetailDrawer({
                   >
                     {it.item.nome}
                   </div>
+                  <div style={{ fontSize: 11, color: T.ink3, marginTop: 1 }}>
+                    {it.item.unidade}
+                  </div>
                 </div>
-                {it.quantidade !== null ? (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'baseline',
-                      gap: 4,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
+                <div
+                  style={{
+                    width: 52,
+                    textAlign: 'right',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: it.item.estoqueMinimo === null ? T.ink4 : T.ink2,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {it.item.estoqueMinimo === null
+                    ? '—'
+                    : fmtQtd(it.item.estoqueMinimo)}
+                </div>
+                <div
+                  style={{
+                    width: 62,
+                    textAlign: 'right',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {it.quantidade !== null ? (
                     <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: T.ink,
-                      }}
+                      style={{ fontSize: 14, fontWeight: 600, color: T.ink }}
                     >
                       {fmtQtd(it.quantidade)}
                     </span>
+                  ) : (
                     <span
                       style={{
                         fontSize: 11,
-                        color: T.ink3,
+                        color: T.ink4,
                         fontWeight: 600,
                       }}
                     >
-                      {it.item.unidade}
+                      não contado
                     </span>
-                  </div>
-                ) : (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: T.ink4,
-                      fontWeight: 600,
-                    }}
-                  >
-                    não contado
-                  </span>
-                )}
+                  )}
+                </div>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={pedidos[it.item.id] ?? ''}
+                  onChange={(e) =>
+                    setPedidos((cur) => ({
+                      ...cur,
+                      [it.item.id]: e.target.value.replace(',', '.'),
+                    }))
+                  }
+                  placeholder="—"
+                  title={
+                    it.item.estoqueMinimo === null
+                      ? 'defina o estoque mínimo do item pra ver a sugestão'
+                      : 'sugestão = estoque mínimo − contagem'
+                  }
+                  style={{
+                    width: 76,
+                    height: 30,
+                    padding: '0 8px',
+                    textAlign: 'right',
+                    background: T.surface,
+                    border: `1px solid ${T.line}`,
+                    borderRadius: 7,
+                    fontFamily: T.fontMono,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: T.ink,
+                    outline: 'none',
+                    flexShrink: 0,
+                  }}
+                />
               </div>
             ))}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: T.ink3,
+              marginTop: 6,
+              lineHeight: 1.5,
+            }}
+          >
+            pedido sugerido = estoque mínimo − contagem. edite à vontade e use
+            &ldquo;exportar pedido&rdquo; pra baixar a planilha. o valor
+            digitado vale só pra esta exportação.
           </div>
         </div>
       </div>
     </WDrawer>
   );
+}
+
+/**
+ * Sugestão de pedido: quanto falta pra voltar ao mínimo.
+ * Só sugere quando dá: sem mínimo definido, ou item não contado (não dá pra
+ * saber o que tem em estoque), o campo nasce vazio pro usuário preencher.
+ */
+function sugestaoPedido(
+  estoqueMinimo: number | null,
+  contado: number | null,
+): string {
+  if (estoqueMinimo === null || contado === null) return '';
+  const falta = estoqueMinimo - contado;
+  return falta > 0 ? fmtQtd(falta) : '0';
 }
